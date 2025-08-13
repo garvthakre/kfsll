@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KF OfficeTask Manager - Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+  <!-- Login Screen -->
+  <div id="loginScreen" class="min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded shadow-md w-full max-w-sm">
+      <h2 class="text-2xl font-bold mb-6 text-center">Admin Login</h2>
+      <input type="text" placeholder="Username" class="w-full mb-4 px-4 py-2 border rounded" />
+      <input type="password" placeholder="Password" class="w-full mb-6 px-4 py-2 border rounded" />
+      <select id="loginFor" class="w-full px-4 py-2 border rounded mb-4">
+  	<option value="Admin">Admin</option>
+  	<option value="User">User</option>
+  	<option value="Vendor">Vendor</option>
+      </select>
+      <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded">Login</button>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard Layout -->
+  <div id="adminApp" class="hidden min-h-screen flex">
+    <!-- Sidebar -->
+    <div class="w-64 bg-white shadow-lg h-screen">
+      <div class="p-6 font-bold text-xl border-b">KF Admin</div>
+      <nav class="mt-4">
+        <ul>
+          <li><a href="#" class="menu-item block px-6 py-3 hover:bg-blue-100" data-id="dashboard">Dashboard</a></li>
+          <li><a href="#" class="menu-item block px-6 py-3 hover:bg-blue-100" data-id="users">Users</a></li>
+          <li><a href="#" class="menu-item block px-6 py-3 hover:bg-blue-100" data-id="projects">Projects</a></li>
+          <li><a href="#" class="menu-item block px-6 py-3 hover:bg-blue-100" data-id="tasks">Tasks</a></li>
+          <li><a href="#" class="menu-item block px-6 py-3 hover:bg-blue-100" data-id="reports">Reports</a></li>
+          <li><a href="#" class="menu-item block px-6 py-3 hover:bg-blue-100" data-id="logs">User Logs</a></li>
+          <li><a href="#" onclick="logout()" class="block px-6 py-3 text-red-500 hover:bg-red-100">Logout</a></li>
+        </ul>
+      </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col">
+      <!-- Header -->
+      <header class="bg-white shadow p-4 flex justify-between items-center">
+        <h1 class="text-xl font-semibold">Admin Panel</h1>
+        <span class="text-gray-600">Welcome, Admin</span>
+      </header>
+
+      <!-- Dynamic Content -->
+      <main class="flex-1 p-6">
+        <!-- Dashboard -->
+        <div id="dashboard" class="content-section">
+          <h2 class="text-2xl font-bold mb-4">Dashboard Overview</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-4 shadow rounded">Total Users: <strong>124</strong></div>
+            <div class="bg-white p-4 shadow rounded">Active Projects: <strong>18</strong></div>
+            <div class="bg-white p-4 shadow rounded">Pending Tasks: <strong>45</strong></div>
+          </div>
+        </div>
+
+        <!-- Users -->
+        <div id="users" class="content-section hidden">
+          <h2 class="text-2xl font-bold mb-4">User Management</h2>
+		  <form class="bg-white p-6 shadow rounded space-y-4">
+			  <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div>
+				  <label class="block font-semibold mb-1">Name</label>
+				  <input type="text" class="w-full border px-4 py-2 rounded" placeholder="Enter name" />
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Designation</label>
+				  <input type="text" class="w-full border px-4 py-2 rounded" placeholder="Enter designation" />
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Role</label>
+				  <select class="w-full border px-4 py-2 rounded">
+					<option>Intern</option>
+					<option>Staff</option>
+					<option>Consultant</option>
+					<option>Vendor</option>
+					<option>Admin</option>
+				  </select>
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Type</label>
+				  <select class="w-full border px-4 py-2 rounded">
+					<option>Full-time</option>
+					<option>Part-time</option>
+				  </select>
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Working Type</label>
+				  <select class="w-full border px-4 py-2 rounded">
+					<option>Onsite</option>
+					<option>Remote</option>
+				  </select>
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Working For</label>
+				  <select class="w-full border px-4 py-2 rounded">
+					<option>Our Office</option>
+					<option>Vendor - Acme Corp</option>
+					<option>Vendor - ByteWorks</option>
+				  </select>
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Email ID</label>
+				  <input type="email" class="w-full border px-4 py-2 rounded" placeholder="Enter email address" />
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Mobile Number</label>
+				  <input type="tel" class="w-full border px-4 py-2 rounded" placeholder="Enter mobile number" />
+				</div>
+				<div id="statusField" class="hidden">
+				  <label class="block font-semibold mb-1">Status</label>
+				  <select class="w-full border px-4 py-2 rounded">
+					<option>Active</option>
+					<option>Disabled</option>
+				  </select>
+				</div>
+				<div class="w-full text-center">
+					<br />
+					<button class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+				</div>
+			</div>
+		  </form>
+		  
+          <table class="table-auto w-full bg-white shadow rounded">
+            <thead>
+              <tr class="bg-gray-100">
+                <th class="px-4 py-2">Name</th>
+                <th class="px-4 py-2">Role</th>
+                <th class="px-4 py-2">Mobile</th>
+                <th class="px-4 py-2">Status</th>
+                <th class="px-4 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="px-4 py-2">John Doe</td>
+                <td class="px-4 py-2">Intern</td>
+                <td class="px-4 py-2">9831231231</td>
+                <td class="px-4 py-2 text-green-600">Active</td>
+                <td class="px-4 py-2 space-x-2">
+                  <button class="text-blue-500">Edit</button>
+                  <button class="text-red-500">Disable</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Projects -->
+        <div id="projects" class="content-section hidden">
+          <h2 class="text-2xl font-bold mb-4">Projects</h2>
+		  <form class="bg-white p-6 shadow rounded space-y-4">
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div>
+				  <label class="block font-semibold mb-1">Project Name</label>
+				  <input type="text" class="w-full border px-4 py-2 rounded" placeholder="Enter project name" />
+				</div>
+				  <div>
+					<label class="block font-semibold mb-1">Start Date</label>
+					<input type="date" class="w-full border px-4 py-2 rounded" />
+				  </div>
+				  <div>
+					<label class="block font-semibold mb-1">End Date</label>
+					<input type="date" class="w-full border px-4 py-2 rounded" />
+				  </div>
+				<div>
+				  <label class="block font-semibold mb-1">Project Type</label>
+				  <select class="w-full border px-4 py-2 rounded">
+					<option>In-house</option>
+					<option>Vendor - Acme Corp</option>
+					<option>Vendor - ByteWorks</option>
+				  </select>
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Project Status</label>
+				  <select class="w-full border px-4 py-2 rounded">
+					<option>Open</option>
+					<option>In Progress</option>
+					<option>On Hold</option>
+					<option>Completed</option>
+					<option>Archived</option>
+				  </select>
+				</div>
+				<div class="w-full text-center">
+					<br />
+					<button class="bg-blue-600 text-white px-4 py-2 rounded">Save Project</button>
+				</div>
+			</div>
+		  </form>
+          <div class="bg-white p-4 shadow rounded">
+            <h3 class="font-semibold">Project List</h3>
+            <ul class="list-disc ml-6 mt-2">
+              <li>Project A - In Progress</li>
+              <li>Project B - Completed</li>
+              <li>Project C - On Hold</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Tasks -->
+        <div id="tasks" class="content-section hidden">
+          <h2 class="text-2xl font-bold mb-4">Task Management</h2>
+		  <form class="bg-white p-6 shadow rounded space-y-4">
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div>
+				  <label class="block font-semibold mb-1">Project</label>
+				  <select class="w-full border px-4 py-2 rounded">
+					<option>Project A - In-house</option>
+					<option>Project B - Vendor - Acme Corp</option>
+				  </select>
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Task Title</label>
+				  <input type="text" class="w-full border px-4 py-2 rounded" placeholder="Enter task title" />
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Assigned To</label>
+				  <select class="w-full border px-4 py-2 rounded">
+					<option>Unassigned</option>
+					<option>John Doe - Intern</option>
+					<option>Jane Smith - Consultant (Acme Corp)</option>
+					<option>Alex Brown - Staff</option>
+				  </select>
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Due Date</label>
+				  <input type="date" class="w-full border px-4 py-2 rounded" />
+				</div>
+				<div id="taskStatusField" class="hidden">
+				  <label class="block font-semibold mb-1">Task Status</label>
+				  <select class="w-full border px-4 py-2 rounded">
+					<option>Open</option>
+					<option>In Progress</option>
+					<option>Closed</option>
+				  </select>
+				</div>
+				<div class="w-full text-center">
+					<br />
+					<button class="bg-blue-600 text-white px-4 py-2 rounded">Save Task</button>
+				</div>
+			</div>
+		  </form>
+		  <table class="table-auto w-full bg-white shadow rounded">
+            <thead>
+              <tr class="bg-gray-100">
+				<th class="px-4 py-2">Project</th>
+                <th class="px-4 py-2">Task</th>
+                <th class="px-4 py-2">Assigned To</th>
+                <th class="px-4 py-2">Status</th>
+                <th class="px-4 py-2">Due</th>
+                <th class="px-4 py-2">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="px-4 py-2">Project A</td>
+                <td class="px-4 py-2">Update documentation</td>
+                <td class="px-4 py-2">Jane Smith</td>
+                <td class="px-4 py-2 text-yellow-600">In Progress</td>
+                <td class="px-4 py-2">31-Jul-2025</td>
+                <td class="px-4 py-2 space-x-2">
+                  <button class="text-blue-500">Edit</button>
+                  <button class="text-red-500">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Reports -->
+        <div id="reports" class="content-section hidden">
+          <h2 class="text-2xl font-bold mb-4">Reports</h2>
+          <div class="bg-white p-4 shadow rounded">
+	    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+		<div>
+            <p class="mb-2">Project:</p>
+            <select class="border px-4 py-2 mb-4">
+              <option>All Projects</option>
+              <option>Project-1</option>
+              <option>Project-2</option>
+            </select>
+	       </div>	
+		<div>
+            <p class="mb-2">User:</p>
+            <select class="border px-4 py-2 mb-4">
+              <option>All Users</option>
+              <option>John Doe</option>
+              <option>Raju</option>
+            </select>
+	       </div>	
+		<div>
+            <p class="mb-2">Status:</p>
+            <select class="border px-4 py-2 mb-4">
+              <option>All Status</option>
+              <option>Completed</option>
+              <option>Pending</option>
+            </select>
+	       </div>	
+	    </div>
+	    <div class="text-right">	
+            	<button class="bg-blue-600 text-white px-4 py-2 rounded">Generate</button>
+            </div>
+          </div>
+          <table class="table-auto w-full bg-white shadow rounded">
+            <thead>
+              <tr class="bg-gray-100">
+                <th class="px-4 py-2">User</th>
+                <th class="px-4 py-2">Project</th>
+                <th class="px-4 py-2">Task</th>
+                <th class="px-4 py-2">Assigned On</th>
+                <th class="px-4 py-2">Completion By</th>
+                <th class="px-4 py-2">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="px-4 py-2">John Doe</td>
+                <td class="px-4 py-2">Project-1</td>
+                <td class="px-4 py-2">Task-1</td>
+                <td class="px-4 py-2 text-center">10-Jan-2025</td>
+                <td class="px-4 py-2 text-center">12-Jan-2025</td>
+                <td class="px-4 py-2">Completed</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2">Raju</td>
+                <td class="px-4 py-2">Project-2</td>
+                <td class="px-4 py-2">Task-2</td>
+                <td class="px-4 py-2 text-center">12-Jan-2025</td>
+                <td class="px-4 py-2 text-center">15-Jan-2025</td>
+                <td class="px-4 py-2">Pending</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Logs -->
+        <div id="logs" class="content-section hidden">
+          <h2 class="text-2xl font-bold mb-4">User Logs</h2>
+		  <form class="bg-white p-6 shadow rounded space-y-4">
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div>
+				  <label class="block font-semibold mb-1">Date From</label>
+				  <input type="date" class="w-full border px-4 py-2 rounded" />
+				</div>
+				<div>
+				  <label class="block font-semibold mb-1">Date Till</label>
+				  <input type="date" class="w-full border px-4 py-2 rounded" />
+				</div>
+				<div class="w-full text-center">
+					<br />
+					<button class="bg-blue-600 text-white px-4 py-2 rounded">Generate Report</button>
+				</div>
+			</div>
+		  </form>
+          <table class="table-auto w-full bg-white shadow rounded">
+            <thead>
+              <tr class="bg-gray-100">
+                <th class="px-4 py-2">User</th>
+                <th class="px-4 py-2">Task</th>
+                <th class="px-4 py-2">Activty On</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="px-4 py-2">John Doe</td>
+                <td class="px-4 py-2">Logged in </td>
+                <td class="px-4 py-2 text-center">29-Jul-2025 09:00 AM</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2">Raju</td>
+                <td class="px-4 py-2">Updated Task #4</td>
+                <td class="px-4 py-2 text-center">29-Jul-2025 10:15 AM</td>
+              </tr>
+              <tr>
+                <td class="px-4 py-2">Admin</td>
+                <td class="px-4 py-2">Disabled User #5</td>
+                <td class="px-4 py-2 text-center">29-Jul-2025 11:45 AM</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="bg-white text-center text-sm text-gray-600 py-2 border-t">
+        &copy; 2025 Knowforth Tech. All rights reserved.
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    function login() {
+	   const role = document.getElementById("loginFor").value;
+
+	   if (role === "Admin") {
+		document.getElementById("loginScreen").classList.add("hidden");
+		document.getElementById("adminApp").classList.remove("hidden");
+	   } else if (role === "User") {
+		switchToUserInterface();
+	   } else if (role === "Vendor") {
+		switchToVendorInterface();
+	   }    
+	}
+    function logout() {
+      document.getElementById('adminApp').classList.add('hidden');
+      document.getElementById('loginScreen').classList.remove('hidden');
+    }
+
+    const menuItems = document.querySelectorAll(".menu-item");
+    const sections = document.querySelectorAll(".content-section");
+
+    menuItems.forEach(item => {
+      item.addEventListener("click", () => {
+        menuItems.forEach(i => i.classList.remove("bg-blue-200", "font-semibold"));
+        sections.forEach(s => s.classList.add("hidden"));
+        const sectionId = item.getAttribute("data-id");
+        document.getElementById(sectionId).classList.remove("hidden");
+        item.classList.add("bg-blue-200", "font-semibold");
+      });
+    });
+
+  function switchToUserInterface() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    const layout = document.createElement('div');
+    layout.className = "min-h-screen flex flex-col";
+
+    layout.innerHTML = `
+      <div class="flex h-screen">
+        <aside class="w-64 bg-white shadow-lg h-full">
+          <div class="p-6 font-bold text-xl border-b">User Panel</div>
+          <nav class="mt-4">
+            <ul>
+              <li><a href="#" class="user-menu-item block px-6 py-3 hover:bg-blue-100" data-id="myTasks">My Tasks</a></li>
+              <li><a href="#" class="user-menu-item block px-6 py-3 hover:bg-blue-100" data-id="taskUpdates">Task Updates</a></li>
+              <li><a href="#" class="user-menu-item block px-6 py-3 hover:bg-blue-100" data-id="feedback">Feedback</a></li>
+              <li><a href="#" onclick="location.reload()" class="block px-6 py-3 text-red-500 hover:bg-red-100">Logout</a></li>
+            </ul>
+          </nav>
+        </aside>
+
+        <main class="flex-1 p-6">
+          <div id="myTasks" class="user-section">
+            <h2 class="text-2xl font-bold mb-4">My Assigned Tasks</h2>
+            <table class="table-auto w-full bg-white shadow rounded">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="px-4 py-2">Task</th>
+                  <th class="px-4 py-2">Project</th>
+                  <th class="px-4 py-2">Due</th>
+                  <th class="px-4 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="px-4 py-2">Design landing page</td>
+                  <td class="px-4 py-2">Website Redesign</td>
+                  <td class="px-4 py-2">01-Aug-2025</td>
+                  <td class="px-4 py-2 text-yellow-600">In Progress</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="taskUpdates" class="user-section hidden">
+            <h2 class="text-2xl font-bold mb-4">Daily Task Updates</h2>
+            <form class="bg-white p-4 shadow rounded">
+              <label class="block mb-2 font-semibold">Select Task</label>
+              <select class="w-full border px-4 py-2 mb-4">
+                <option>Design landing page</option>
+              </select>
+              <label class="block mb-2 font-semibold">Update</label>
+              <textarea class="w-full border px-4 py-2 mb-4" rows="4"></textarea>
+              <button class="bg-blue-600 text-white px-4 py-2 rounded">Submit</button>
+            </form>
+          </div>
+
+          <div id="feedback" class="user-section hidden">
+            <h2 class="text-2xl font-bold mb-4">Remarks & Feedback</h2>
+            <form class="bg-white p-4 shadow rounded">
+              <label class="block mb-2 font-semibold">Select Task</label>
+              <select class="w-full border px-4 py-2 mb-4">
+                <option>Design landing page</option>
+              </select>
+              <label class="block mb-2 font-semibold">Remarks</label>
+              <textarea class="w-full border px-4 py-2 mb-4" rows="3"></textarea>
+              <button class="bg-blue-600 text-white px-4 py-2 rounded">Submit</button>
+            </form>
+          </div>
+        </main>
+      </div>
+    `;
+
+    document.body.innerHTML = '';
+    document.body.appendChild(layout);
+
+    const menuItems = document.querySelectorAll(".user-menu-item");
+    const sections = document.querySelectorAll(".user-section");
+
+    menuItems.forEach(item => {
+      item.addEventListener("click", () => {
+        menuItems.forEach(i => i.classList.remove("bg-blue-200", "font-semibold"));
+        sections.forEach(s => s.classList.add("hidden"));
+        const sectionId = item.getAttribute("data-id");
+        document.getElementById(sectionId).classList.remove("hidden");
+        item.classList.add("bg-blue-200", "font-semibold");
+      });
+    });
+  }
+  function switchToVendorInterface() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    const layout = document.createElement('div');
+    layout.className = "min-h-screen flex flex-col";
+
+    layout.innerHTML = `
+      <div class="flex h-screen">
+        <aside class="w-64 bg-white shadow-lg h-full">
+          <div class="p-6 font-bold text-xl border-b">Vendor Panel</div>
+          <nav class="mt-4">
+            <ul>
+              <li><a href="#" class="user-menu-item block px-6 py-3 hover:bg-blue-100" data-id="vendorConsultants">Consultants</a></li>
+              <li><a href="#" class="user-menu-item block px-6 py-3 hover:bg-blue-100" data-id="vendorTaskAss">Task Assignment</a></li>
+              <li><a href="#" class="user-menu-item block px-6 py-3 hover:bg-blue-100" data-id="vendorTasks">Assigned Tasks</a></li>
+              <li><a href="#" class="user-menu-item block px-6 py-3 hover:bg-blue-100" data-id="vendorReports">Reports</a></li>
+              <li><a href="#" onclick="location.reload()" class="block px-6 py-3 text-red-500 hover:bg-red-100">Logout</a></li>
+            </ul>
+          </nav>
+        </aside>
+
+        <main class="flex-1 p-6">
+        <!-- Tasks -->
+          <div id="vendorConsultants" class="user-section">
+            <h2 class="text-2xl font-bold mb-4">My Consultants</h2>
+            <table class="table-auto w-full bg-white shadow rounded">
+              <thead>
+                <tr class="bg-gray-100">
+                  <th class="px-4 py-2">Name</th>
+                  <th class="px-4 py-2">Status</th>
+                  <th class="px-4 py-2">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="px-4 py-2">Anita Roy</td>
+                  <td class="px-4 py-2 text-green-600">Active</td>
+                  <td class="px-4 py-2 text-blue-500">View Tasks</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+		  <div id="vendorTaskAss" class="user-section hidden">
+			  <h2 class="text-2xl font-bold mb-4">Vendor Task Management</h2>
+			  <form class="bg-white p-6 shadow rounded space-y-4">
+				<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+					<div>
+					  <label class="block font-semibold mb-1">Project</label>
+					  <select class="w-full border px-4 py-2 rounded">
+						<option>Project B - Vendor - Acme Corp</option>
+						<option>Project C - Vendor - Acme Corp</option>
+					  </select>
+					</div>
+					<div>
+					  <label class="block font-semibold mb-1">Task Title</label>
+					  <input type="text" class="w-full border px-4 py-2 rounded" placeholder="Enter task title" />
+					</div>
+					<div>
+					  <label class="block font-semibold mb-1">Assigned To</label>
+					  <select class="w-full border px-4 py-2 rounded">
+						<option>Unassigned</option>
+						<option>John Doe - Intern</option>
+						<option>Jane Smith - Consultant</option>
+						<option>Alex Brown - Staff</option>
+					  </select>
+					</div>
+					<div>
+					  <label class="block font-semibold mb-1">Due Date</label>
+					  <input type="date" class="w-full border px-4 py-2 rounded" />
+					</div>
+					<div id="taskStatusField" class="hidden">
+					  <label class="block font-semibold mb-1">Task Status</label>
+					  <select class="w-full border px-4 py-2 rounded">
+						<option>Open</option>
+						<option>In Progress</option>
+						<option>Closed</option>
+					  </select>
+					</div>
+					<div class="w-full text-center">
+						<br />
+						<button class="bg-blue-600 text-white px-4 py-2 rounded">Save Task</button>
+					</div>
+				</div>
+			  </form>
+			  <table class="table-auto w-full bg-white shadow rounded">
+				<thead>
+				  <tr class="bg-gray-100">
+					<th class="px-4 py-2">Project</th>
+					<th class="px-4 py-2">Task</th>
+					<th class="px-4 py-2">Assigned To</th>
+					<th class="px-4 py-2">Status</th>
+					<th class="px-4 py-2">Due</th>
+					<th class="px-4 py-2">Action</th>
+				  </tr>
+				</thead>
+				<tbody>
+				  <tr>
+					<td class="px-4 py-2">Project B</td>
+					<td class="px-4 py-2">Update documentation</td>
+					<td class="px-4 py-2">Jane Smith</td>
+					<td class="px-4 py-2 text-yellow-600">In Progress</td>
+					<td class="px-4 py-2 text-center">31-Jul-2025</td>
+					<td class="px-4 py-2 space-x-2">
+					  <button class="text-blue-500">Edit</button>
+					  <button class="text-red-500">Delete</button>
+					</td>
+				  </tr>
+				</tbody>
+			  </table>
+		  </div>
+
+          <div id="vendorTasks" class="user-section hidden">
+            <h2 class="text-2xl font-bold mb-4">Tasks Overview</h2>
+            <table class="table-auto w-full bg-white shadow rounded">
+              <thead>
+                <tr class="bg-gray-100">
+				  <th class="px-4 py-2">Project</th>
+                  <th class="px-4 py-2">Task</th>
+                  <th class="px-4 py-2">Consultant</th>
+                  <th class="px-4 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="px-4 py-2">Project A</td>
+                  <td class="px-4 py-2">Prepare Analytics Report</td>
+                  <td class="px-4 py-2">Anita Roy</td>
+                  <td class="px-4 py-2 text-yellow-600">In Progress</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="vendorReports" class="user-section hidden">
+            <h2 class="text-2xl font-bold mb-4">Performance Reports</h2>
+            <div class="bg-white p-4 shadow rounded">
+			    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+				  <div>
+					  <p>Select consultant to view performance report.</p>
+					  <select class="w-full px-4 py-2 mb-4 border rounded">
+						<option>Anita Roy</option>
+					  </select>
+				  </div>
+				  <div>
+					  <p>Task Status</p>
+					  <select class="w-full px-4 py-2 mb-4 border rounded">
+						<option>All</option>
+						<option>Only Completed</option>
+						<option>Only Pending</option>
+					  </select>
+				  </div>
+				  <div class="text-center">
+					  <br/>
+					  <button class="bg-blue-600 text-white px-4 py-2 rounded">Generate</button>
+				  </div>
+				</div>
+            </div>
+            <table class="table-auto w-full bg-white shadow rounded">
+              <thead>
+                <tr class="bg-gray-100">
+				  <th class="px-4 py-2">Project</th>
+                  <th class="px-4 py-2">Task</th>
+                  <th class="px-4 py-2">Assigned Date</th>
+                  <th class="px-4 py-2">Due Date</th>
+                  <th class="px-4 py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="px-4 py-2">Project A</td>
+                  <td class="px-4 py-2">Prepare Analytics Report</td>
+                  <td class="px-4 py-2 text-center">20-Jun-2025</td>
+                  <td class="px-4 py-2 text-center">30-Jul-2025</td>
+                  <td class="px-4 py-2 text-yellow-600">In Progress</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </main>
+      </div>
+    `;
+
+    document.body.innerHTML = '';
+    document.body.appendChild(layout);
+
+    const menuItems = document.querySelectorAll(".user-menu-item");
+    const sections = document.querySelectorAll(".user-section");
+
+    menuItems.forEach(item => {
+      item.addEventListener("click", () => {
+        menuItems.forEach(i => i.classList.remove("bg-blue-200", "font-semibold"));
+        sections.forEach(s => s.classList.add("hidden"));
+        const sectionId = item.getAttribute("data-id");
+        document.getElementById(sectionId).classList.remove("hidden");
+        item.classList.add("bg-blue-200", "font-semibold");
+      });
+    });
+  }
+  function showUserForm(isEdit = false) {
+    document.getElementById('users').classList.remove('hidden');
+    document.getElementById('statusField').classList.toggle('hidden', !isEdit);
+  }
+  function showProjectForm() {
+    document.getElementById('projectDetailsForm').classList.remove('hidden');
+  }
+  function showTaskForm(isEdit = false) {
+    document.getElementById('taskStatusField').classList.toggle('hidden', !isEdit);
+  }
+  </script>
+</body>
+</html>
