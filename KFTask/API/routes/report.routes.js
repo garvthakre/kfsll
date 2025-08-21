@@ -1,0 +1,238 @@
+const express = require('express');
+const router = express.Router();
+const reportController = require('../controllers/report.controller');
+const { authenticate, authorize } = require('../middlewares/auth.middleware');
+
+/**
+ * @swagger
+ * tags:
+ *   name: Reports
+ *   description: Reporting endpoints
+ */
+
+/**
+ * @swagger
+ * /api/reports/tasks:
+ *   get:
+ *     summary: Get task report
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by project ID
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by user ID
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         description: Filter by task status
+ *       - in: query
+ *         name: start_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by start date
+ *       - in: query
+ *         name: end_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by end date
+ *     responses:
+ *       200:
+ *         description: Task report retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/tasks', authenticate, reportController.getTaskReport);
+
+/**
+ * @swagger
+ * /api/reports/user-performance:
+ *   get:
+ *     summary: Get user performance report
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by user ID
+ *       - in: query
+ *         name: start_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by start date
+ *       - in: query
+ *         name: end_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by end date
+ *     responses:
+ *       200:
+ *         description: User performance report retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/user-performance', authenticate, authorize(['admin', 'manager', 'vendor']), reportController.getUserPerformanceReport);
+
+/**
+ * @swagger
+ * /api/reports/project-status:
+ *   get:
+ *     summary: Get project status report
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by project ID
+ *     responses:
+ *       200:
+ *         description: Project status report retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/project-status', authenticate, reportController.getProjectStatusReport);
+
+/**
+ * @swagger
+ * /api/reports/vendor-performance:
+ *   get:
+ *     summary: Get vendor performance report
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: vendor_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by vendor ID
+ *       - in: query
+ *         name: start_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by start date
+ *       - in: query
+ *         name: end_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by end date
+ *     responses:
+ *       200:
+ *         description: Vendor performance report retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ *       500:
+ *         description: Server error
+ */
+router.get('/vendor-performance', authenticate, authorize(['admin']), reportController.getVendorPerformanceReport);
+
+/**
+ * @swagger
+ * /api/reports/export:
+ *   post:
+ *     summary: Export report to CSV/Excel
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - report_type
+ *             properties:
+ *               report_type:
+ *                 type: string
+ *                 description: Type of report to export (tasks, user-performance, project-status, vendor-performance)
+ *               filters:
+ *                 type: object
+ *                 description: Report filters
+ *               format:
+ *                 type: string
+ *                 description: Export format (csv or xlsx)
+ *     responses:
+ *       200:
+ *         description: Report exported successfully
+ *       400:
+ *         description: Invalid input data
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.post('/export', authenticate, reportController.exportReport);
+
+/**
+ * @swagger
+ * /api/reports/user-logs:
+ *   get:
+ *     summary: Get user activity logs report
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by user ID
+ *       - in: query
+ *         name: start_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by start date
+ *       - in: query
+ *         name: end_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by end date
+ *       - in: query
+ *         name: action
+ *         schema:
+ *           type: string
+ *         description: Filter by action type
+ *     responses:
+ *       200:
+ *         description: User logs retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Insufficient permissions
+ *       500:
+ *         description: Server error
+ */
+router.get('/user-logs', authenticate, authorize(['admin']), reportController.getUserLogsReport);
+
+export default router;
