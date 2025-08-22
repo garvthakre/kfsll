@@ -1,7 +1,12 @@
-const express = require('express');
+// const express = require('express');
+// const router = express.Router();
+// const  = require('../controllers/report.controller');
+// const { authenticate, authorize } = require('../middlewares/auth.middleware');
+import express from 'express';
 const router = express.Router();
-const reportController = require('../controllers/report.controller');
-const { authenticate, authorize } = require('../middlewares/auth.middleware');
+
+import {getProjectStatusReport,getTaskReport,getUserLogsReport,getUserPerformanceReport,getVendorPerformanceReport,exportReport} from '../controllers/report.controller.js';
+import { authenticateToken, authorize } from '../middleware/auth.middleware.js'
 
 /**
  * @swagger
@@ -54,7 +59,7 @@ const { authenticate, authorize } = require('../middlewares/auth.middleware');
  *       500:
  *         description: Server error
  */
-router.get('/tasks', authenticate, reportController.getTaskReport);
+router.get('/tasks', authenticateToken, getTaskReport);
 
 /**
  * @swagger
@@ -90,7 +95,7 @@ router.get('/tasks', authenticate, reportController.getTaskReport);
  *       500:
  *         description: Server error
  */
-router.get('/user-performance', authenticate, authorize(['admin', 'manager', 'vendor']), reportController.getUserPerformanceReport);
+router.get('/user-performance', authenticateToken, authorize(['admin', 'manager', 'vendor']), getUserPerformanceReport);
 
 /**
  * @swagger
@@ -114,7 +119,7 @@ router.get('/user-performance', authenticate, authorize(['admin', 'manager', 've
  *       500:
  *         description: Server error
  */
-router.get('/project-status', authenticate, reportController.getProjectStatusReport);
+router.get('/project-status', authenticateToken, getProjectStatusReport);
 
 /**
  * @swagger
@@ -152,7 +157,7 @@ router.get('/project-status', authenticate, reportController.getProjectStatusRep
  *       500:
  *         description: Server error
  */
-router.get('/vendor-performance', authenticate, authorize(['admin']), reportController.getVendorPerformanceReport);
+router.get('/vendor-performance', authenticateToken, authorize(['admin']), getVendorPerformanceReport);
 
 /**
  * @swagger
@@ -190,7 +195,7 @@ router.get('/vendor-performance', authenticate, authorize(['admin']), reportCont
  *       500:
  *         description: Server error
  */
-router.post('/export', authenticate, reportController.exportReport);
+router.post('/export', authenticateToken, exportReport);
 
 /**
  * @swagger
@@ -233,6 +238,6 @@ router.post('/export', authenticate, reportController.exportReport);
  *       500:
  *         description: Server error
  */
-router.get('/user-logs', authenticate, authorize(['admin']), reportController.getUserLogsReport);
+router.get('/user-logs', authenticateToken, authorize(['admin']), getUserLogsReport);
 
 export default router;

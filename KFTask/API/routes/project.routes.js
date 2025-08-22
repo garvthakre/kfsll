@@ -1,7 +1,11 @@
-const express = require('express');
-const { check } = require('express-validator');
-const ProjectController = require('../controllers/project.controller');
-const { authenticateToken, authorize } = require('../middleware/auth.middleware');
+// const express = require('express');
+// const { check } = require('express-validator');
+// const ProjectController = require('../controllers/project.controller');
+// const { authenticateToken, authorize } = require('../middleware/auth.middleware');
+import express from 'express';
+import { check } from 'express-validator';
+import ProjectController from '../controllers/project.controller.js';
+import { authenticateToken, authorize } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 

@@ -1,5 +1,5 @@
-const db = require('../config/db');
-
+// const db = require('../config/db');
+import db from '../config/db.js';
 /**
  * Task Model
  * Handles database operations for the tasks table
@@ -491,4 +491,4 @@ const TaskModel = {
   }
 };
 
-module.exports = TaskModel;
+export default TaskModel;

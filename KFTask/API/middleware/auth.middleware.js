@@ -33,7 +33,7 @@ import jwt from 'jsonwebtoken';
  * @param {Array} roles - Array of allowed roles
  * @returns {Function} - Express middleware function
  */
-const authorize = (roles = []) => {
+ export const authorize = (roles = []) => {
   if (typeof roles === 'string') {
     roles = [roles];
   }
@@ -53,7 +53,4 @@ const authorize = (roles = []) => {
   };
 };
 
-module.exports = {
-  authenticateToken,
-  authorize
-};
+export default { authenticateToken, authorize };

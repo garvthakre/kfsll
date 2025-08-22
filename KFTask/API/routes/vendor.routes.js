@@ -1,7 +1,22 @@
-const express = require('express');
+// const express = require('express');
+// const router = express.Router();
+// const vendorController = require('../controllers/vendor.controller');
+// const { authenticateToken, authorize } = require('../middlewares/auth.middleware');
+import express from 'express';
 const router = express.Router();
-const vendorController = require('../controllers/vendor.controller');
-const { authenticate, authorize } = require('../middlewares/auth.middleware');
+
+import {
+  getAllVendors,
+  getVendorById,
+  createVendor,
+  updateVendor,
+  deleteVendor,
+  getVendorConsultants,
+  getVendorProjects,
+  getVendorTasks,
+  assignTaskToConsultant
+}from '../controllers/vendor.controller.js';
+import { authenticateToken, authorize } from '../middleware/auth.middleware.js';
 
 /**
  * @swagger
@@ -37,7 +52,7 @@ const { authenticate, authorize } = require('../middlewares/auth.middleware');
  *       500:
  *         description: Server error
  */
-router.get('/', authenticate, authorize(['admin']), vendorController.getAllVendors);
+router.get('/', authenticateToken, authorize(['admin']), getAllVendors);
 
 /**
  * @swagger
@@ -64,7 +79,7 @@ router.get('/', authenticate, authorize(['admin']), vendorController.getAllVendo
  *       500:
  *         description: Server error
  */
-router.get('/:id', authenticate, vendorController.getVendorById);
+router.get('/:id', authenticateToken,  getVendorById);
 
 /**
  * @swagger
@@ -124,7 +139,7 @@ router.get('/:id', authenticate, vendorController.getVendorById);
  *       500:
  *         description: Server error
  */
-router.post('/', authenticate, authorize(['admin']), vendorController.createVendor);
+router.post('/', authenticateToken, authorize(['admin']), createVendor);
 
 /**
  * @swagger
@@ -178,7 +193,7 @@ router.post('/', authenticate, authorize(['admin']), vendorController.createVend
  *       500:
  *         description: Server error
  */
-router.put('/:id', authenticate, authorize(['admin', 'vendor']), vendorController.updateVendor);
+router.put('/:id', authenticateToken, authorize(['admin', 'vendor']),  updateVendor);
 
 /**
  * @swagger
@@ -205,7 +220,7 @@ router.put('/:id', authenticate, authorize(['admin', 'vendor']), vendorControlle
  *       500:
  *         description: Server error
  */
-router.delete('/:id', authenticate, authorize(['admin']), vendorController.deleteVendor);
+router.delete('/:id', authenticateToken, authorize(['admin']), deleteVendor);
 
 /**
  * @swagger
@@ -232,7 +247,7 @@ router.delete('/:id', authenticate, authorize(['admin']), vendorController.delet
  *       500:
  *         description: Server error
  */
-router.get('/:id/consultants', authenticate, vendorController.getVendorConsultants);
+router.get('/:id/consultants', authenticateToken,  getVendorConsultants);
 
 /**
  * @swagger
@@ -259,7 +274,7 @@ router.get('/:id/consultants', authenticate, vendorController.getVendorConsultan
  *       500:
  *         description: Server error
  */
-router.get('/:id/projects', authenticate, vendorController.getVendorProjects);
+router.get('/:id/projects', authenticateToken,  getVendorProjects);
 
 /**
  * @swagger
@@ -291,7 +306,7 @@ router.get('/:id/projects', authenticate, vendorController.getVendorProjects);
  *       500:
  *         description: Server error
  */
-router.get('/:id/tasks', authenticate, vendorController.getVendorTasks);
+router.get('/:id/tasks', authenticateToken,  getVendorTasks);
 
 /**
  * @swagger
@@ -332,6 +347,6 @@ router.get('/:id/tasks', authenticate, vendorController.getVendorTasks);
  *       500:
  *         description: Server error
  */
-router.post('/consultants/:consultantId/tasks', authenticate, authorize(['admin', 'vendor']), vendorController.assignTaskToConsultant);
+router.post('/consultants/:consultantId/tasks', authenticateToken, authorize(['admin', 'vendor']),  assignTaskToConsultant);
 
 export default router;

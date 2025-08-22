@@ -1,6 +1,16 @@
-const db = require('../config/db');
-const vendorUtils = require('../utils/vendor.utils');
-const { logUserAction } = require('../utils/audit.utils');
+// const db = require('../config/db');
+// const vendorUtils = require('../utils/vendor.utils');
+// const { logUserAction } = require('../utils/audit.utils');
+import db from '../config/db.js';
+import { 
+  isUserVendor, 
+  getVendorIdByUserId, 
+  getVendorConsultantIds,
+  canVendorAccessProject,
+  getVendorTaskStats,
+  isConsultantFromVendor
+} from '../utils/vendor.utils.js';
+import { logUserAction } from '../utils/audit.utils.js';
 
 /**
  * Get all vendors with pagination
@@ -8,7 +18,7 @@ const { logUserAction } = require('../utils/audit.utils');
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.getAllVendors = async (req, res, next) => {
+export const getAllVendors = async (req, res, next) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
@@ -48,7 +58,7 @@ exports.getAllVendors = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.getVendorById = async (req, res, next) => {
+export const getVendorById = async (req, res, next) => {
   try {
     const { id } = req.params;
     
@@ -91,7 +101,7 @@ exports.getVendorById = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.createVendor = async (req, res, next) => {
+export const createVendor = async (req, res, next) => {
   try {
     const {
       user_id,
@@ -194,7 +204,7 @@ exports.createVendor = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.updateVendor = async (req, res, next) => {
+export const updateVendor = async (req, res, next) => {
   try {
     const { id } = req.params;
     const {
@@ -274,7 +284,7 @@ exports.updateVendor = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.deleteVendor = async (req, res, next) => {
+export const deleteVendor = async (req, res, next) => {
   try {
     const { id } = req.params;
     
@@ -315,7 +325,7 @@ exports.deleteVendor = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.getVendorConsultants = async (req, res, next) => {
+export const getVendorConsultants = async (req, res, next) => {
   try {
     const { id } = req.params;
     
@@ -370,7 +380,7 @@ exports.getVendorConsultants = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.getVendorProjects = async (req, res, next) => {
+export const getVendorProjects = async (req, res, next) => {
   try {
     const { id } = req.params;
     
@@ -423,7 +433,7 @@ exports.getVendorProjects = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.getVendorTasks = async (req, res, next) => {
+export const getVendorTasks = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.query;
@@ -489,7 +499,7 @@ exports.getVendorTasks = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.assignTaskToConsultant = async (req, res, next) => {
+export const assignTaskToConsultant = async (req, res, next) => {
   try {
     const { consultantId } = req.params;
     const { task_id } = req.body;

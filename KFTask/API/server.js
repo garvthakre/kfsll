@@ -13,9 +13,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import path from 'path';
 import dotenv from 'dotenv';
-import swaggerUi from 'swagger-ui-express';
+import swaggerUI from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
-
+import { fileURLToPath } from 'url';
 // Import routes
 // const authRoutes = require('./routes/auth.routes');
 // const userRoutes = require('./routes/user.routes');
@@ -38,7 +38,8 @@ dotenv.config();
 // Initialize express app
 const app = express();
 const PORT = process.env.PORT || 7057;
-
+ const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 // Swagger definition
 const swaggerOptions = {
   definition: {
@@ -76,7 +77,7 @@ const swaggerOptions = {
   apis: ['./src/routes/*.js'], // Path to the API routes
 };
 
-const swaggerDocs = swaggerJsDoc(swaggerOptions);
+const swaggerDocs = swaggerJSDoc(swaggerOptions);
 
 // Middleware
 app.use(cors());

@@ -1,7 +1,11 @@
-const db = require('../config/db');
-const { logUserAction } = require('../utils/audit.utils');
-const reportUtils = require('../utils/report.utils');
-const vendorUtils = require('../utils/vendor.utils');
+// const db = require('../config/db');
+// const { logUserAction } = require('../utils/audit.utils');
+// const = require('../utils/report.utils');
+// const    = require('../utils/vendor.utils');
+import db from '../config/db.js';
+import { logUserAction } from '../utils/audit.utils.js';
+import {generateProjectStatusReport,generateTaskReport,generateUserLogsReport,generateUserPerformanceReport,generateVendorPerformanceReport } from '../utils/report.utils.js';
+import  {getVendorConsultantIds,getVendorIdByUserId }  from '../utils/vendor.utils.js';
 
 /**
  * Get task report with filtering options
@@ -9,7 +13,7 @@ const vendorUtils = require('../utils/vendor.utils');
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.getTaskReport = async (req, res, next) => {
+export const getTaskReport = async (req, res, next) => {
   try {
     const { 
       project_id,
@@ -72,7 +76,7 @@ exports.getTaskReport = async (req, res, next) => {
     if (req.user.role !== 'admin') {
       if (req.user.role === 'vendor') {
         // Vendors can only see their consultants' tasks
-        const vendorId = await vendorUtils.getVendorIdByUserId(req.user.id);
+        const vendorId = await    getVendorIdByUserId(req.user.id);
         if (!vendorId) {
           return res.status(403).json({
             success: false,
@@ -80,7 +84,7 @@ exports.getTaskReport = async (req, res, next) => {
           });
         }
         
-        const consultantIds = await vendorUtils.getVendorConsultantIds(vendorId);
+        const consultantIds = await    getVendorConsultantIds(vendorId);
         if (consultantIds.length === 0) {
           // No consultants found, return empty result
           return res.status(200).json({
@@ -126,7 +130,7 @@ exports.getTaskReport = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.getUserPerformanceReport = async (req, res, next) => {
+export const getUserPerformanceReport = async (req, res, next) => {
   try {
     const { 
       user_id,
@@ -136,7 +140,7 @@ exports.getUserPerformanceReport = async (req, res, next) => {
     
     // For vendor users, they can only see their consultants' performance
     if (req.user.role === 'vendor') {
-      const vendorId = await vendorUtils.getVendorIdByUserId(req.user.id);
+      const vendorId = await    getVendorIdByUserId(req.user.id);
       
       if (!vendorId) {
         return res.status(403).json({
@@ -147,7 +151,7 @@ exports.getUserPerformanceReport = async (req, res, next) => {
       
       if (user_id) {
         // Check if this consultant belongs to the vendor
-        const isFromVendor = await vendorUtils.isConsultantFromVendor(vendorId, user_id);
+        const isFromVendor = await    isConsultantFromVendor(vendorId, user_id);
         
         if (!isFromVendor) {
           return res.status(403).json({
@@ -274,7 +278,7 @@ exports.getUserPerformanceReport = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.getProjectStatusReport = async (req, res, next) => {
+export const getProjectStatusReport = async (req, res, next) => {
   try {
     const { project_id } = req.query;
     
@@ -311,7 +315,7 @@ exports.getProjectStatusReport = async (req, res, next) => {
     
     // For vendor users, restrict to their own projects
     if (req.user.role === 'vendor') {
-      const vendorId = await vendorUtils.getVendorIdByUserId(req.user.id);
+      const vendorId = await    getVendorIdByUserId(req.user.id);
       
       if (!vendorId) {
         return res.status(403).json({
@@ -387,7 +391,7 @@ exports.getProjectStatusReport = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.getVendorPerformanceReport = async (req, res, next) => {
+export const getVendorPerformanceReport = async (req, res, next) => {
   try {
     const { 
       vendor_id,
@@ -511,7 +515,7 @@ exports.getVendorPerformanceReport = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.exportReport = async (req, res, next) => {
+export const exportReport = async (req, res, next) => {
   try {
     const { report_type, filters = {}, format = 'csv' } = req.body;
     
@@ -539,24 +543,24 @@ exports.exportReport = async (req, res, next) => {
     let reportData;
     switch (report_type) {
       case 'tasks':
-        reportData = await reportUtils.generateTaskReport(modifiedReq);
+        reportData = await generateTaskReport(modifiedReq);
         break;
       case 'user-performance':
-        reportData = await reportUtils.generateUserPerformanceReport(modifiedReq);
+        reportData = await generateUserPerformanceReport(modifiedReq);
         break;
       case 'project-status':
-        reportData = await reportUtils.generateProjectStatusReport(modifiedReq);
+        reportData = await generateProjectStatusReport(modifiedReq);
         break;
       case 'vendor-performance':
-        reportData = await reportUtils.generateVendorPerformanceReport(modifiedReq);
+        reportData = await generateVendorPerformanceReport(modifiedReq);
         break;
       case 'user-logs':
-        reportData = await reportUtils.generateUserLogsReport(modifiedReq);
+        reportData = await generateUserLogsReport(modifiedReq);
         break;
     }
     
     // Export the report
-    const exportResult = await reportUtils.exportReportToFile(reportData, report_type, format);
+    const exportResult = await exportReportToFile(reportData, report_type, format);
     
     // Log this report export
     await logUserAction(
@@ -581,7 +585,7 @@ exports.exportReport = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
-exports.getUserLogsReport = async (req, res, next) => {
+export const getUserLogsReport = async (req, res, next) => {
   try {
     const { 
       user_id,

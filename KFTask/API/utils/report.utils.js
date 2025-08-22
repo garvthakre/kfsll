@@ -1,16 +1,28 @@
-const db = require('../config/db');
-const fs = require('fs');
-const path = require('path');
-const { Parser } = require('json2csv');
-const Excel = require('exceljs');
-const vendorUtils = require('./vendor.utils');
+// const db = require('../config/db');
+// const fs = require('fs');
+// const path = require('path');
+// const { Parser } = require('json2csv');
+// const Excel = require('exceljs');
+// const = require('./vendor.utils');
+import  db from '../config/db.js';
+import fs from 'fs';
+import path from 'path';
+import { Parser } from 'json2csv';
+import Excel from 'exceljs';
+import  { 
+  
+  getVendorIdByUserId, 
+  getVendorConsultantIds,
+   
+  isConsultantFromVendor }
+ from './vendor.utils.js';
 
 /**
  * Generate task report
  * @param {Object} req - Express request object with filters in query
  * @returns {Promise<Array>} - Array of tasks with project and assignee information
  */
-exports.generateTaskReport = async (req) => {
+export const generateTaskReport = async (req) => {
   const { 
     project_id,
     user_id,
@@ -78,12 +90,12 @@ exports.generateTaskReport = async (req) => {
   if (req.user.role !== 'admin') {
     if (req.user.role === 'vendor') {
       // Vendors can only see their consultants' tasks
-      const vendorId = await vendorUtils.getVendorIdByUserId(req.user.id);
+      const vendorId = await getVendorIdByUserId(req.user.id);
       if (!vendorId) {
         return [];
       }
       
-      const consultantIds = await vendorUtils.getVendorConsultantIds(vendorId);
+      const consultantIds = await getVendorConsultantIds(vendorId);
       if (consultantIds.length === 0) {
         return [];
       }
@@ -111,7 +123,7 @@ exports.generateTaskReport = async (req) => {
  * @param {Object} req - Express request object with filters in query
  * @returns {Promise<Array>} - Array of user performance data
  */
-exports.generateUserPerformanceReport = async (req) => {
+export const generateUserPerformanceReport = async (req) => {
   const { 
     user_id,
     start_date,
@@ -120,7 +132,7 @@ exports.generateUserPerformanceReport = async (req) => {
   
   // For vendor users, they can only see their consultants' performance
   if (req.user.role === 'vendor') {
-    const vendorId = await vendorUtils.getVendorIdByUserId(req.user.id);
+    const vendorId = await getVendorIdByUserId(req.user.id);
     
     if (!vendorId) {
       return [];
@@ -128,7 +140,7 @@ exports.generateUserPerformanceReport = async (req) => {
     
     if (user_id) {
       // Check if this consultant belongs to the vendor
-      const isFromVendor = await vendorUtils.isConsultantFromVendor(vendorId, user_id);
+      const isFromVendor = await isConsultantFromVendor(vendorId, user_id);
       
       if (!isFromVendor) {
         return [];
@@ -169,8 +181,8 @@ exports.generateUserPerformanceReport = async (req) => {
     query += ` AND u.id = $${queryParams.length}`;
   } else if (req.user.role === 'vendor') {
     // For vendor users without specific user_id, get all their consultants
-    const vendorId = await vendorUtils.getVendorIdByUserId(req.user.id);
-    const consultantIds = await vendorUtils.getVendorConsultantIds(vendorId);
+    const vendorId = await getVendorIdByUserId(req.user.id);
+    const consultantIds = await getVendorConsultantIds(vendorId);
     
     if (consultantIds.length === 0) {
       return [];
@@ -246,7 +258,7 @@ exports.generateUserPerformanceReport = async (req) => {
  * @param {Object} req - Express request object with filters in query
  * @returns {Promise<Array>} - Array of project status data
  */
-exports.generateProjectStatusReport = async (req) => {
+export const generateProjectStatusReport = async (req) => {
   const { project_id } = req.query;
   
   // Initialize query parameters array
@@ -291,7 +303,7 @@ exports.generateProjectStatusReport = async (req) => {
   
   // For vendor users, restrict to their own projects
   if (req.user.role === 'vendor') {
-    const vendorId = await vendorUtils.getVendorIdByUserId(req.user.id);
+    const vendorId = await getVendorIdByUserId(req.user.id);
     
     if (!vendorId) {
       return [];
@@ -353,7 +365,7 @@ exports.generateProjectStatusReport = async (req) => {
  * @param {Object} req - Express request object with filters in query
  * @returns {Promise<Array>} - Array of vendor performance data
  */
-exports.generateVendorPerformanceReport = async (req) => {
+export const generateVendorPerformanceReport = async (req) => {
   const { 
     vendor_id,
     start_date,
@@ -491,7 +503,7 @@ exports.generateVendorPerformanceReport = async (req) => {
  * @param {Object} req - Express request object with filters in query
  * @returns {Promise<Array>} - Array of user logs data
  */
-exports.generateUserLogsReport = async (req) => {
+export const generateUserLogsReport = async (req) => {
   const { 
     user_id,
     start_date,
@@ -554,7 +566,7 @@ exports.generateUserLogsReport = async (req) => {
  * @param {String} format - Export format (csv or xlsx)
  * @returns {Promise<Object>} - Object containing file path and name
  */
-exports.exportReportToFile = async (data, reportType, format = 'csv') => {
+export const exportReportToFile = async (data, reportType, format = 'csv') => {
   // Create directory for exports if it doesn't exist
   const exportDir = path.join(__dirname, '../exports');
   if (!fs.existsSync(exportDir)) {
@@ -609,7 +621,7 @@ exports.exportReportToFile = async (data, reportType, format = 'csv') => {
  * @param {Date|String} date - Date to format
  * @returns {String} - Formatted date string (YYYY-MM-DD)
  */
-exports.formatDate = (date) => {
+export const formatDate = (date) => {
   if (!date) return '';
   
   const d = new Date(date);

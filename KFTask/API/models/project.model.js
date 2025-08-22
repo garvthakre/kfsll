@@ -1,5 +1,5 @@
-const db = require('../config/db');
-
+// const db = require('../config/db');
+import db from '../config/db.js';
 /**
  * Project Model
  * Handles database operations for the projects table
@@ -357,5 +357,4 @@ const ProjectModel = {
     return rows;
   }
 };
-
-module.exports = ProjectModel;
+export default ProjectModel;

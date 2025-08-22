@@ -1,7 +1,11 @@
-const { validationResult } = require('express-validator');
-const TaskModel = require('../models/task.model');
-const ProjectModel = require('../models/project.model');
-const db = require('../config/db');
+// const { validationResult } = require('express-validator');
+// const TaskModel = require('../models/task.model');
+// const ProjectModel = require('../models/project.model');
+// const db = require('../config/db');
+import { validationResult } from 'express-validator';
+import TaskModel from '../models/task.model.js';
+import ProjectModel from '../models/project.model.js';
+import db from '../config/db.js';
 
 /**
  * Task Controller
@@ -466,4 +470,4 @@ const TaskController = {
   }
 };
 
-module.exports = TaskController;
+ export default  TaskController;

@@ -1,7 +1,12 @@
-const express = require('express');
-const { check } = require('express-validator');
-const TaskController = require('../controllers/task.controller');
-const { authenticateToken } = require('../middleware/auth.middleware');
+// const express = require('express');
+// const { check } = require('express-validator');
+// const TaskController = require('../controllers/task.controller');
+// const { authenticateToken } = require('../middleware/auth.middleware');
+
+import express from 'express';
+import { check } from 'express-validator';
+import TaskController from '../controllers/task.controller.js';
+import { authenticateToken } from '../middleware/auth.middleware.js';
 
 const router = express.Router();
 

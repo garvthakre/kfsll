@@ -1,5 +1,5 @@
-const db = require('../config/db');
-
+// const db = require('../config/db');
+import db from '../config/db.js';
 /**
  * Log user actions for audit trail
  * @param {Number} userId - ID of the user performing the action
@@ -8,7 +8,7 @@ const db = require('../config/db');
  * @param {String} ipAddress - IP address of the user (optional)
  * @returns {Promise<Object>} - The created log entry
  */
-exports.logUserAction = async (userId, action, description, ipAddress = null) => {
+export const logUserAction = async (userId, action, description, ipAddress = null) => {
   try {
     const result = await db.query(
       `INSERT INTO user_logs (
@@ -41,7 +41,7 @@ exports.logUserAction = async (userId, action, description, ipAddress = null) =>
  * @param {Number} limit - Maximum number of actions to return (default: 10)
  * @returns {Promise<Array>} - Array of recent user actions
  */
-exports.getUserRecentActions = async (userId, limit = 10) => {
+export const getUserRecentActions = async (userId, limit = 10) => {
   try {
     const result = await db.query(
       `SELECT * 

@@ -11,7 +11,7 @@ import db from '../config/db.js';
  * Auth Controller
  * Handles authentication related operations
  */
-export default  AuthController = {
+const AuthController = {
   /**
    * User login
    * @param {Object} req - Express request object
@@ -247,4 +247,4 @@ export default  AuthController = {
   }
 };
 
-module.exports = AuthController;
+export default AuthController;

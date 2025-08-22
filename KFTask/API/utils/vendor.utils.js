@@ -1,11 +1,11 @@
-const db = require('../config/db');
-
+// const db = require('../config/db');
+import db from '../config/db.js';
 /**
  * Check if a user is a vendor
  * @param {Number} userId - User ID to check
  * @returns {Promise<Boolean>} - True if user is a vendor, false otherwise
  */
-exports.isUserVendor = async (userId) => {
+export const isUserVendor = async (userId) => {
   try {
     const result = await db.query(
       'SELECT COUNT(*) FROM vendors WHERE user_id = $1',
@@ -24,7 +24,7 @@ exports.isUserVendor = async (userId) => {
  * @param {Number} userId - User ID to check
  * @returns {Promise<Number|null>} - Vendor ID or null if not found
  */
-exports.getVendorIdByUserId = async (userId) => {
+export const getVendorIdByUserId = async (userId) => {
   try {
     const result = await db.query(
       'SELECT id FROM vendors WHERE user_id = $1',
@@ -47,7 +47,7 @@ exports.getVendorIdByUserId = async (userId) => {
  * @param {Number} vendorId - Vendor ID
  * @returns {Promise<Array>} - Array of consultant user IDs
  */
-exports.getVendorConsultantIds = async (vendorId) => {
+export const getVendorConsultantIds = async (vendorId) => {
   try {
     // Get vendor user ID first
     const vendorResult = await db.query(
@@ -83,7 +83,7 @@ exports.getVendorConsultantIds = async (vendorId) => {
  * @param {Number} projectId - Project ID
  * @returns {Promise<Boolean>} - True if vendor can access project, false otherwise
  */
-exports.canVendorAccessProject = async (vendorId, projectId) => {
+export const canVendorAccessProject = async (vendorId, projectId) => {
   try {
     // Get vendor details
     const vendorResult = await db.query(
@@ -117,7 +117,7 @@ exports.canVendorAccessProject = async (vendorId, projectId) => {
  * @param {Number} vendorId - Vendor ID
  * @returns {Promise<Object>} - Task statistics
  */
-exports.getVendorTaskStats = async (vendorId) => {
+export const getVendorTaskStats = async (vendorId) => {
   try {
     // Get vendor user ID first
     const vendorResult = await db.query(
@@ -173,7 +173,7 @@ exports.getVendorTaskStats = async (vendorId) => {
  * @param {Number} consultantId - Consultant user ID
  * @returns {Promise<Boolean>} - True if consultant belongs to vendor, false otherwise
  */
-exports.isConsultantFromVendor = async (vendorId, consultantId) => {
+export const isConsultantFromVendor = async (vendorId, consultantId) => {
   try {
     // Get vendor user ID first
     const vendorResult = await db.query(

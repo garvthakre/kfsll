@@ -1,6 +1,9 @@
-const { validationResult } = require('express-validator');
-const ProjectModel = require('../models/project.model');
-const db = require('../config/db');
+// const { validationResult } = require('express-validator');
+// const ProjectModel = require('../models/project.model');
+// const db = require('../config/db');
+import { validationResult } from 'express-validator';
+import ProjectModel from '../models/project.model.js';
+import db from '../config/db.js';
 
 /**
  * Project Controller
@@ -378,4 +381,4 @@ const ProjectController = {
   }
 };
 
-module.exports = ProjectController;
+export default ProjectController;

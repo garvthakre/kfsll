@@ -1,6 +1,9 @@
-const { validationResult } = require('express-validator');
-const UserModel = require('../models/user.model');
-const db = require('../config/db');
+// const { validationResult } = require('express-validator');
+// const UserModel = require('../models/user.model');
+// const db = require('../config/db');
+import { validationResult } from 'express-validator';
+import UserModel from '../models/user.model.js';
+import  db  from '../config/db.js';
 
 /**
  * User Controller
@@ -256,4 +259,4 @@ const UserController = {
   }
 };
 
-module.exports = UserController;
+export default UserController;
