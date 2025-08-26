@@ -184,6 +184,34 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api/projects/stats:
+ *   get:
+ *     summary: Get project statistics
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Project statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 stats:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ProjectStats'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/stats', authenticateToken, ProjectController.getProjectStats);
+
+
+/**
+ * @swagger
  * /api/projects:
  *   get:
  *     summary: Get all projects with pagination and filters
@@ -499,31 +527,5 @@ router.post('/:id/team', [
  */
 router.delete('/:id/team/:userId', authenticateToken, ProjectController.removeTeamMember);
 
-/**
- * @swagger
- * /api/projects/stats:
- *   get:
- *     summary: Get project statistics
- *     tags: [Projects]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Project statistics
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 stats:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/ProjectStats'
- *       401:
- *         description: Not authenticated
- *       500:
- *         description: Server error
- */
-router.get('/stats', authenticateToken, ProjectController.getProjectStats);
-
+ 
 export default router;

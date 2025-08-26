@@ -35,7 +35,7 @@ export const getTaskReport = async (req, res, next) => {
         t.due_date,
         t.created_at AS assigned_on,
         u.first_name || ' ' || u.last_name AS assigned_to,
-        p.name AS project_name
+        p.title AS project_name
       FROM tasks t
       JOIN task_assignments ta ON t.id = ta.task_id
       JOIN users u ON ta.user_id = u.id
@@ -70,7 +70,7 @@ export const getTaskReport = async (req, res, next) => {
     }
     
     // Add order by
-    query += ` ORDER BY p.name, t.due_date`;
+    query += ` ORDER BY p.title, t.due_date`;
     
     // Check permissions for non-admin users
     if (req.user.role !== 'admin') {
@@ -289,7 +289,7 @@ export const getProjectStatusReport = async (req, res, next) => {
     let query = `
       SELECT 
         p.id AS project_id,
-        p.name AS project_name,
+        p.title AS project_name,
         p.status AS project_status,
         p.start_date,
         p.end_date,
@@ -300,7 +300,7 @@ export const getProjectStatusReport = async (req, res, next) => {
         SUM(CASE WHEN t.due_date < CURRENT_DATE AND t.status != 'completed' THEN 1 ELSE 0 END) AS overdue_tasks,
         CASE 
           WHEN COUNT(t.id) = 0 THEN 0 
-          ELSE ROUND((SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END)::float / COUNT(t.id)) * 100, 2)
+          ELSE ROUND((SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END)::numeric / COUNT(t.id)) * 100, 2)
         END AS completion_percentage
       FROM projects p
       LEFT JOIN tasks t ON p.id = t.project_id
@@ -346,7 +346,7 @@ export const getProjectStatusReport = async (req, res, next) => {
     
     // Group and order by
     query += ` 
-      GROUP BY p.id, p.name, p.status, p.start_date, p.end_date
+      GROUP BY p.id, p.title, p.status, p.start_date, p.end_date
       ORDER BY p.start_date DESC
     `;
     
@@ -356,7 +356,7 @@ export const getProjectStatusReport = async (req, res, next) => {
     // For each project, get assigned team members
     for (const project of result.rows) {
       const teamQuery = `
-        SELECT DISTINCT u.id, u.first_name || ' ' || u.last_name AS name, u.role
+        SELECT DISTINCT u.id,u.first_name, u.last_name, u.first_name || ' ' || u.last_name AS name, u.role
         FROM users u
         JOIN task_assignments ta ON u.id = ta.user_id
         JOIN tasks t ON ta.task_id = t.id
@@ -414,7 +414,7 @@ export const getVendorPerformanceReport = async (req, res, next) => {
         SUM(CASE WHEN t.due_date < CURRENT_DATE AND t.status != 'completed' THEN 1 ELSE 0 END) AS overdue_tasks,
         CASE 
           WHEN COUNT(t.id) = 0 THEN 0 
-          ELSE ROUND((SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END)::float / COUNT(t.id)) * 100, 2)
+          ELSE ROUND((SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END)::numeric / COUNT(t.id)) * 100, 2)
         END AS completion_rate,
         ROUND(AVG(CASE WHEN t.status = 'completed' THEN 
           EXTRACT(EPOCH FROM (t.updated_at - t.created_at))/3600/24 
@@ -456,7 +456,7 @@ export const getVendorPerformanceReport = async (req, res, next) => {
     
     // For each vendor, get their consultants performance
     for (const vendor of result.rows) {
-      const consultantsQuery = `
+      let consultantsQuery = `
         SELECT 
           u.id AS user_id,
           u.first_name || ' ' || u.last_name AS user_name,

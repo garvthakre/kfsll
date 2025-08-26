@@ -57,12 +57,12 @@ const ProjectModel = {
     const query = `
       SELECT p.*, 
         u.first_name || ' ' || u.last_name as manager_name,
-        c.name as client_name,
+       c.first_name || ' ' || c.last_name as client_name,
         (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) as task_count,
         (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.status = 'completed') as completed_tasks
       FROM projects p
       LEFT JOIN users u ON p.manager_id = u.id
-      LEFT JOIN clients c ON p.client_id = c.id
+      LEFT JOIN users c ON p.client_id = c.id
       WHERE p.id = $1
     `;
     
@@ -81,12 +81,12 @@ const ProjectModel = {
     let query = `
       SELECT p.*, 
         u.first_name || ' ' || u.last_name as manager_name,
-        c.name as client_name,
+        c.first_name || ' ' || c.last_name as client_name,
         (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) as task_count,
         (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.status = 'completed') as completed_tasks
       FROM projects p
       LEFT JOIN users u ON p.manager_id = u.id
-      LEFT JOIN clients c ON p.client_id = c.id
+       LEFT JOIN users c ON p.client_id = c.id
       WHERE 1=1
     `;
     
@@ -344,7 +344,7 @@ const ProjectModel = {
         AVG(
           CASE 
             WHEN end_date IS NOT NULL AND start_date IS NOT NULL 
-            THEN EXTRACT(DAY FROM end_date - start_date)
+            THEN (end_date - start_date)
             ELSE NULL
           END
         ) as avg_duration

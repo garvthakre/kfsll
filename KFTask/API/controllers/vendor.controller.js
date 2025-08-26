@@ -464,7 +464,7 @@ export const getVendorTasks = async (req, res, next) => {
     
     // Create base query
     let query = `
-      SELECT t.*, p.name as project_name, u.first_name, u.last_name
+      SELECT t.*, p.title as project_name, u.first_name, u.last_name
       FROM tasks t
       JOIN task_assignments ta ON t.id = ta.task_id
       JOIN users u ON ta.user_id = u.id

@@ -208,6 +208,113 @@ const router = express.Router();
 
 /**
  * @swagger
+ * /api/tasks/stats:
+ *   get:
+ *     summary: Get task statistics
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: integer
+ *         description: Filter stats by project ID
+ *     responses:
+ *       200:
+ *         description: Task statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 stats:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/TaskStats'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/stats', authenticateToken, TaskController.getTaskStats);
+
+/**
+ * @swagger
+ * /api/tasks/overdue:
+ *   get:
+ *     summary: Get overdue tasks
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of tasks to return
+ *     responses:
+ *       200:
+ *         description: List of overdue tasks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Task'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/overdue', authenticateToken, TaskController.getOverdueTasks);
+
+/**
+ * @swagger
+ * /api/tasks/upcoming:
+ *   get:
+ *     summary: Get upcoming tasks due soon
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           default: 7
+ *         description: Number of days to look ahead
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of tasks to return
+ *     responses:
+ *       200:
+ *         description: List of upcoming tasks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Task'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/upcoming', authenticateToken, TaskController.getUpcomingTasks);
+
+/**
+ * @swagger
  * /api/tasks:
  *   get:
  *     summary: Get all tasks with pagination and filters
@@ -619,111 +726,6 @@ router.post('/:id/time', [
   check('hours').isNumeric().withMessage('Hours must be a number')
 ], TaskController.trackTime);
 
-/**
- * @swagger
- * /api/tasks/stats:
- *   get:
- *     summary: Get task statistics
- *     tags: [Tasks]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: project_id
- *         schema:
- *           type: integer
- *         description: Filter stats by project ID
- *     responses:
- *       200:
- *         description: Task statistics
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 stats:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/TaskStats'
- *       401:
- *         description: Not authenticated
- *       500:
- *         description: Server error
- */
-router.get('/stats', authenticateToken, TaskController.getTaskStats);
-
-/**
- * @swagger
- * /api/tasks/overdue:
- *   get:
- *     summary: Get overdue tasks
- *     tags: [Tasks]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Number of tasks to return
- *     responses:
- *       200:
- *         description: List of overdue tasks
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 tasks:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Task'
- *       401:
- *         description: Not authenticated
- *       500:
- *         description: Server error
- */
-router.get('/overdue', authenticateToken, TaskController.getOverdueTasks);
-
-/**
- * @swagger
- * /api/tasks/upcoming:
- *   get:
- *     summary: Get upcoming tasks due soon
- *     tags: [Tasks]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: days
- *         schema:
- *           type: integer
- *           default: 7
- *         description: Number of days to look ahead
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Number of tasks to return
- *     responses:
- *       200:
- *         description: List of upcoming tasks
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 tasks:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Task'
- *       401:
- *         description: Not authenticated
- *       500:
- *         description: Server error
- */
-router.get('/upcoming', authenticateToken, TaskController.getUpcomingTasks);
+ 
 
 export default router;
