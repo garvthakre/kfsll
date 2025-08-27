@@ -45,13 +45,13 @@ async create(userData) {
     email, 
     hashedPassword, 
     role || 'employee', 
-    department !== undefined ? department : null, 
-    position !== undefined ? position : null,
-    profile_image !== undefined ? profile_image : null,
-    designation !== undefined ? designation : null,
-    type !== undefined ? type : null,
-    working_type !== undefined ? working_type : null,
-    working_for !== undefined ? working_for : null
+    department || null, 
+    position || null,
+    profile_image || null,
+    designation || null,
+    type || null,
+    working_type || null,
+    working_for || null
   ];
 
   try {

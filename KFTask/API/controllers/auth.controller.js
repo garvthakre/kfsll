@@ -99,57 +99,75 @@ const AuthController = {
    * @param {Object} res - Express response object
    * @returns {Object} - New user info
    */
-  async register(req, res) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-
-      const { first_name, last_name, email, password, role } = req.body;
-
-      // Check if email already exists
-      const existingUser = await UserModel.findByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ message: 'Email is already registered' });
-      }
-
-      // Only allow admin to create users with admin/manager role
-      const requestingUserRole = req.user?.role;
-      if ((role === 'admin' || role === 'manager') && requestingUserRole !== 'admin') {
-        return res.status(403).json({ 
-          message: 'You do not have permission to create users with this role' 
-        });
-      }
-
-      // Create new user
-      const newUser = await UserModel.create({
-        first_name,
-        last_name,
-        email,
-        password,
-        role: role || 'employee',
-        department: req.body.department,
-        position: req.body.position
-      });
-
-      // Log user creation
-      if (req.user) {
-        await db.query(
-          'INSERT INTO user_logs (user_id, action, description, ip_address) VALUES ($1, $2, $3, $4)',
-          [req.user.id, 'user_create', `Created new user: ${newUser.id}`, req.ip]
-        );
-      }
-
-      return res.status(201).json({
-        message: 'User registered successfully',
-        user: newUser
-      });
-    } catch (error) {
-      console.error('Registration error:', error);
-      return res.status(500).json({ message: 'Server error during registration' });
+async register(req, res) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
     }
-  },
+
+    const { 
+      first_name, 
+      last_name, 
+      email, 
+      password, 
+      role,
+      department,
+      position,
+      designation,
+      type,
+      working_type,
+      working_for,
+      profile_image
+    } = req.body;
+
+    // Check if email already exists
+    const existingUser = await UserModel.findByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ message: 'Email is already registered' });
+    }
+
+    // Only allow admin to create users with admin/manager role
+    const requestingUserRole = req.user?.role;
+    if ((role === 'admin' || role === 'manager') && requestingUserRole !== 'admin') {
+      return res.status(403).json({ 
+        message: 'You do not have permission to create users with this role' 
+      });
+    }
+
+    // Create new user with all fields
+    const newUser = await UserModel.create({
+      first_name,
+      last_name,
+      email,
+      password,
+      role: role || 'employee',
+      department,
+      position,
+      designation,
+      type,
+      working_type,
+      working_for,
+      profile_image
+    });
+
+    // Log user creation
+    if (req.user) {
+      await db.query(
+        'INSERT INTO user_logs (user_id, action, description, ip_address) VALUES ($1, $2, $3, $4)',
+        [req.user.id, 'user_create', `Created new user: ${newUser.id}`, req.ip]
+      );
+    }
+
+    return res.status(201).json({
+      message: 'User registered successfully',
+      user: newUser
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    return res.status(500).json({ message: 'Server error during registration' });
+  }
+},
 
   /**
    * Get current logged-in user profile
