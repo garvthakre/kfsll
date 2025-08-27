@@ -12,47 +12,55 @@ const UserModel = {
    * @param {Object} userData - User information
    * @returns {Promise<Object>} - New user object
    */
-  async create(userData) {
-    const { 
-      first_name, 
-      last_name, 
-      email, 
-      password, 
-      role, 
-      department, 
-      position,
-      profile_image
-    } = userData;
+async create(userData) {
+  const { 
+    first_name, 
+    last_name, 
+    email, 
+    password, 
+    role, 
+    department, 
+    position,
+    profile_image,
+    designation,
+    type,
+    working_type,
+    working_for
+  } = userData;
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+  // Hash password
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash(password, salt);
 
-    const query = `
-      INSERT INTO users 
-      (first_name, last_name, email, password, role, department, position, profile_image) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-      RETURNING id, first_name, last_name, email, role, department, position, status, created_at
-    `;
+  const query = `
+    INSERT INTO users 
+    (first_name, last_name, email, password, role, department, position, profile_image, designation, type, working_type, working_for) 
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
+    RETURNING id, first_name, last_name, email, role, department, position, status, designation, type, working_type, working_for, created_at
+  `;
 
-    const values = [
-      first_name, 
-      last_name, 
-      email, 
-      hashedPassword, 
-      role || 'employee', 
-      department || null, 
-      position || null,
-      profile_image || null
-    ];
+  const values = [
+    first_name, 
+    last_name, 
+    email, 
+    hashedPassword, 
+    role || 'employee', 
+    department !== undefined ? department : null, 
+    position !== undefined ? position : null,
+    profile_image !== undefined ? profile_image : null,
+    designation !== undefined ? designation : null,
+    type !== undefined ? type : null,
+    working_type !== undefined ? working_type : null,
+    working_for !== undefined ? working_for : null
+  ];
 
-    try {
-      const { rows } = await db.query(query, values);
-      return rows[0];
-    } catch (error) {
-      throw error;
-    }
-  },
+  try {
+    const { rows } = await db.query(query, values);
+    return rows[0];
+  } catch (error) {
+    throw error;
+  }
+},
 
   /**
    * Find user by email
@@ -70,15 +78,15 @@ const UserModel = {
    * @param {number} id - User ID
    * @returns {Promise<Object>} - User object
    */
-  async findById(id) {
-    const query = `
-      SELECT id, first_name, last_name, email, role, department, 
-      position, status, profile_image, created_at, updated_at
-      FROM users WHERE id = $1
-    `;
-    const { rows } = await db.query(query, [id]);
-    return rows[0];
-  },
+async findById(id) {
+  const query = `
+    SELECT id, first_name, last_name, email, role, department, 
+    position, status, profile_image, designation, type, working_type, working_for, created_at, updated_at
+    FROM users WHERE id = $1
+  `;
+  const { rows } = await db.query(query, [id]);
+  return rows[0];
+},
 
   /**
    * Get all users with pagination
@@ -86,18 +94,18 @@ const UserModel = {
    * @param {number} offset - Pagination offset
    * @returns {Promise<Array>} - Array of users
    */
-  async findAll(limit = 10, offset = 0) {
-    const query = `
-      SELECT id, first_name, last_name, email, role, department, 
-      position, status, created_at, updated_at
-      FROM users
-      ORDER BY created_at DESC
-      LIMIT $1 OFFSET $2
-    `;
-    
-    const { rows } = await db.query(query, [limit, offset]);
-    return rows;
-  },
+async findAll(limit = 10, offset = 0) {
+  const query = `
+    SELECT id, first_name, last_name, email, role, department, 
+    position, status, designation, type, working_type, working_for, created_at, updated_at
+    FROM users
+    ORDER BY created_at DESC
+    LIMIT $1 OFFSET $2
+  `;
+  
+  const { rows } = await db.query(query, [limit, offset]);
+  return rows;
+},
 
   /**
    * Update user information
@@ -105,34 +113,43 @@ const UserModel = {
    * @param {Object} userData - User information to update
    * @returns {Promise<Object>} - Updated user object
    */
-  async update(id, userData) {
-    const {
-      first_name,
-      last_name,
-      department,
-      position,
-      status,
-      profile_image,
-    } = userData;
+async update(id, userData) {
+  const {
+    first_name,
+    last_name,
+    department,
+    position,
+    status,
+    profile_image,
+    designation,
+    type,
+    working_type,
+    working_for
+  } = userData;
 
-    const query = `
-      UPDATE users
-      SET 
-        first_name = COALESCE($1, first_name),
-        last_name = COALESCE($2, last_name),
-        department = COALESCE($3, department),
-        position = COALESCE($4, position),
-        status = COALESCE($5, status),
-        profile_image = COALESCE($6, profile_image)
-      WHERE id = $7
-      RETURNING id, first_name, last_name, email, role, department, position, status, created_at, updated_at
-    `;
+  const query = `
+    UPDATE users
+    SET 
+      first_name = COALESCE($1, first_name),
+      last_name = COALESCE($2, last_name),
+      department = COALESCE($3, department),
+      position = COALESCE($4, position),
+      status = COALESCE($5, status),
+      profile_image = COALESCE($6, profile_image),
+      designation = COALESCE($7, designation),
+      type = COALESCE($8, type),
+      working_type = COALESCE($9, working_type),
+      working_for = COALESCE($10, working_for),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = $11
+    RETURNING id, first_name, last_name, email, role, department, position, status, designation, type, working_type, working_for, created_at, updated_at
+  `;
 
-    const values = [first_name, last_name, department, position, status, profile_image, id];
-    
-    const { rows } = await db.query(query, values);
-    return rows[0];
-  },
+  const values = [first_name, last_name, department, position, status, profile_image, designation, type, working_type, working_for, id];
+  
+  const { rows } = await db.query(query, values);
+  return rows[0];
+},
 
   /**
    * Update user password
@@ -144,7 +161,7 @@ const UserModel = {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    const query = 'UPDATE users SET password = $1 WHERE id = $2';
+    const query = 'UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2';
     await db.query(query, [hashedPassword, id]);
     return true;
   },
@@ -177,6 +194,38 @@ const UserModel = {
   async countTotal() {
     const query = 'SELECT COUNT(*) FROM users';
     const { rows } = await db.query(query);
+    return parseInt(rows[0].count);
+  },
+
+  /**
+   * Find users by vendor (working_for)
+   * @param {number} vendorId - Vendor ID
+   * @param {number} limit - Number of results per page
+   * @param {number} offset - Pagination offset
+   * @returns {Promise<Array>} - Array of users working for the vendor
+   */
+  async findByVendor(vendorId, limit = 10, offset = 0) {
+    const query = `
+      SELECT id, first_name, last_name, email, role, department, 
+      position, status, designation, type, working_type, working_for, created_at, updated_at
+      FROM users
+      WHERE working_for = $1
+      ORDER BY created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+    
+    const { rows } = await db.query(query, [vendorId, limit, offset]);
+    return rows;
+  },
+
+  /**
+   * Count users by vendor
+   * @param {number} vendorId - Vendor ID
+   * @returns {Promise<number>} - Total user count for vendor
+   */
+  async countByVendor(vendorId) {
+    const query = 'SELECT COUNT(*) FROM users WHERE working_for = $1';
+    const { rows } = await db.query(query, [vendorId]);
     return parseInt(rows[0].count);
   }
 };

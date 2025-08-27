@@ -1,7 +1,3 @@
-// const express = require('express');
-// const { check } = require('express-validator');
-// const UserController = require('../controllers/user.controller');
-// const { authenticateToken, authorize } = require('../middleware/auth.middleware');
 import express from 'express';
 import {check} from 'express-validator';
 import UserController from '../controllers/user.controller.js';
@@ -38,6 +34,18 @@ const router = express.Router();
  *         position:
  *           type: string
  *           description: Job position
+ *         designation:
+ *           type: string
+ *           description: Designation
+ *         type:
+ *           type: string
+ *           description: User type
+ *         working_type:
+ *           type: string
+ *           description: Working type
+ *         working_for:
+ *           type: integer
+ *           description: Vendor ID that the user is working for
  *         status:
  *           type: string
  *           enum: [active, inactive, suspended]
@@ -85,6 +93,18 @@ const router = express.Router();
  *         position:
  *           type: string
  *           description: Job position
+ *         designation:
+ *           type: string
+ *           description: Designation
+ *         type:
+ *           type: string
+ *           description: User type
+ *         working_type:
+ *           type: string
+ *           description: Working type
+ *         working_for:
+ *           type: integer
+ *           description: Vendor ID that the user is working for
  *         profile_image:
  *           type: string
  *           description: Profile image URL
@@ -103,6 +123,18 @@ const router = express.Router();
  *         position:
  *           type: string
  *           description: Job position
+ *         designation:
+ *           type: string
+ *           description: Designation
+ *         type:
+ *           type: string
+ *           description: User type
+ *         working_type:
+ *           type: string
+ *           description: Working type
+ *         working_for:
+ *           type: integer
+ *           description: Vendor ID that the user is working for
  *         profile_image:
  *           type: string
  *           description: Profile image URL
@@ -238,7 +270,8 @@ router.post('/', [
   check('first_name').notEmpty().withMessage('First name is required'),
   check('last_name').notEmpty().withMessage('Last name is required'),
   check('email').isEmail().withMessage('Please provide a valid email'),
-  check('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  check('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  check('working_for').optional().isInt({ min: 1 }).withMessage('working_for must be a valid vendor ID')
 ], UserController.createUser);
 
 /**
@@ -280,7 +313,8 @@ router.post('/', [
 router.put('/:id', [
   authenticateToken,
   check('first_name').optional().notEmpty().withMessage('First name cannot be empty if provided'),
-  check('last_name').optional().notEmpty().withMessage('Last name cannot be empty if provided')
+  check('last_name').optional().notEmpty().withMessage('Last name cannot be empty if provided'),
+  check('working_for').optional().isInt({ min: 1 }).withMessage('working_for must be a valid vendor ID')
 ], UserController.updateUser);
 
 /**

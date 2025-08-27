@@ -59,6 +59,18 @@ const router = express.Router();
  *         position:
  *           type: string
  *           description: User's job position
+ *         designation:
+ *           type: string
+ *           description: User's designation
+ *         type:
+ *           type: string
+ *           description: User type (e.g., permanent, contract, temporary)
+ *         working_type:
+ *           type: string
+ *           description: Working type (e.g., full_time, part_time, remote)
+ *         working_for:
+ *           type: integer
+ *           description: Vendor ID that the user is working for (foreign key to vendors table)
  *     ChangePasswordRequest:
  *       type: object
  *       required:
@@ -97,6 +109,18 @@ const router = express.Router();
  *         position:
  *           type: string
  *           description: Job position
+ *         designation:
+ *           type: string
+ *           description: Designation
+ *         type:
+ *           type: string
+ *           description: User type
+ *         working_type:
+ *           type: string
+ *           description: Working type
+ *         working_for:
+ *           type: integer
+ *           description: Vendor ID that the user is working for
  *         status:
  *           type: string
  *           description: Account status
@@ -190,7 +214,8 @@ router.post('/register', [
   check('first_name').notEmpty().withMessage('First name is required'),
   check('last_name').notEmpty().withMessage('Last name is required'),
   check('email').isEmail().withMessage('Please provide a valid email'),
-  check('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+  check('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  check('working_for').optional().isInt({ min: 1 }).withMessage('working_for must be a valid vendor ID')
 ], authenticateToken, AuthController.register);
 
 /**
