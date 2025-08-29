@@ -21,13 +21,14 @@ const ProjectModel = {
       budget,
       manager_id,
       department,
-      priority
+      priority,
+      project_type // Added project_type
     } = projectData;
 
     const query = `
       INSERT INTO projects 
-      (title, description, client_id, start_date, end_date, status, budget, manager_id, department, priority)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      (title, description, client_id, start_date, end_date, status, budget, manager_id, department, priority, project_type)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `;
 
@@ -41,7 +42,8 @@ const ProjectModel = {
       budget || 0,
       manager_id,
       department,
-      priority || 'medium'
+      priority || 'medium',
+      project_type // Added project_type
     ];
 
     const { rows } = await db.query(query, values);
@@ -124,6 +126,13 @@ const ProjectModel = {
       paramIndex++;
     }
 
+    // Added project_type filter
+    if (filters.project_type) {
+      query += ` AND p.project_type = $${paramIndex}`;
+      queryParams.push(filters.project_type);
+      paramIndex++;
+    }
+
     // Add search term filter
     if (filters.search) {
       query += ` AND (
@@ -171,7 +180,8 @@ const ProjectModel = {
       budget,
       manager_id,
       department,
-      priority
+      priority,
+      project_type // Added project_type
     } = projectData;
 
     const query = `
@@ -187,8 +197,9 @@ const ProjectModel = {
         manager_id = COALESCE($8, manager_id),
         department = COALESCE($9, department),
         priority = COALESCE($10, priority),
+        project_type = COALESCE($11, project_type),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = $11
+      WHERE id = $12
       RETURNING *
     `;
 
@@ -203,6 +214,7 @@ const ProjectModel = {
       manager_id,
       department,
       priority,
+      project_type, // Added project_type
       id
     ];
 
@@ -259,6 +271,13 @@ const ProjectModel = {
     if (filters.priority) {
       query += ` AND p.priority = $${paramIndex}`;
       queryParams.push(filters.priority);
+      paramIndex++;
+    }
+
+    // Added project_type filter
+    if (filters.project_type) {
+      query += ` AND p.project_type = $${paramIndex}`;
+      queryParams.push(filters.project_type);
       paramIndex++;
     }
 

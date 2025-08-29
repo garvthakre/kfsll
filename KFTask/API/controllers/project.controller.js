@@ -29,6 +29,7 @@ const ProjectController = {
         manager_id: req.query.manager_id ? parseInt(req.query.manager_id) : null,
         client_id: req.query.client_id ? parseInt(req.query.client_id) : null,
         priority: req.query.priority,
+        project_type: req.query.project_type, // Added project_type filter
         search: req.query.search,
         sort_by: req.query.sort_by,
         sort_order: req.query.sort_order
@@ -110,6 +111,7 @@ const ProjectController = {
         manager_id,
         department,
         priority,
+        project_type, // Added project_type
         team_members
       } = req.body;
 
@@ -131,7 +133,8 @@ const ProjectController = {
           budget,
           manager_id: manager_id || req.user.id, // Default to current user if not specified
           department,
-          priority
+          priority,
+          project_type // Added project_type
         });
 
         // Add team members if provided
