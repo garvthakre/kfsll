@@ -366,7 +366,87 @@ const ProjectController = {
       return res.status(500).json({ message: 'Server error while removing team member' });
     }
   },
+  /**
+ * Get all available project types
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of project types
+ */
+  async getProjectTypes(req, res) {
+  try {
+    const projectTypes = [
+      'internal',
+      'client_project', 
+      'research',
+      'web_development',
+      'mobile_app',
+      'consulting',
+      'design',
+      'data_analysis',
+      'infrastructure',
+      'marketing',
+      'maintenance',
+      'training'
+    ];
 
+    return res.status(200).json({
+      project_types: projectTypes
+    });
+  } catch (error) {
+    console.error('Get project types error:', error);
+    return res.status(500).json({ message: 'Server error while fetching project types' });
+  }
+},
+/**
+ * Get all available project statuses
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of project statuses
+ */
+async getProjectStatuses(req, res) {
+  try {
+    const projectStatuses = [
+      'planning',
+      'in_progress',
+      'on_hold',
+      'completed',
+      'cancelled'
+    ];
+
+    return res.status(200).json({
+      project_statuses: projectStatuses,
+      total: projectStatuses.length
+    });
+  } catch (error) {
+    console.error('Get project statuses error:', error);
+    return res.status(500).json({ message: 'Server error while fetching project statuses' });
+  }
+},
+
+/**
+ * Get all available project priorities
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of project priorities
+ */
+async getProjectPriorities(req, res) {
+  try {
+    const projectPriorities = [
+      'low',
+      'medium',
+      'high',
+      'urgent'
+    ];
+
+    return res.status(200).json({
+      project_priorities: projectPriorities,
+      total: projectPriorities.length
+    });
+  } catch (error) {
+    console.error('Get project priorities error:', error);
+    return res.status(500).json({ message: 'Server error while fetching project priorities' });
+  }
+},
   /**
    * Get project statistics
    * @param {Object} req - Express request object

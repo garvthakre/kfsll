@@ -349,6 +349,154 @@ router.get('/stats', authenticateToken, ProjectController.getProjectStats);
 
 /**
  * @swagger
+ * /api/projects/types:
+ *   get:
+ *     summary: Get all available project types
+ *     description: Retrieve list of all available project types with their labels and descriptions
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Project types retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 project_types:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       value:
+ *                         type: string
+ *                         description: Project type value
+ *                         example: "web_development"
+ *                       label:
+ *                         type: string
+ *                         description: Human-readable label
+ *                         example: "Web Development"
+ *                       description:
+ *                         type: string
+ *                         description: Description of the project type
+ *                         example: "Websites and web applications"
+ *                 total:
+ *                   type: integer
+ *                   description: Total number of project types
+ *             example:
+ *               project_types:
+ *                 - value: "internal"
+ 
+ *                 - value: "client_project"
+ 
+ *                 - value: "research"
+                  
+ *               total: 12
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/types', authenticateToken, ProjectController.getProjectTypes);
+/**
+ * @swagger
+ * /api/projects/statuses:
+ *   get:
+ *     summary: Get all available project statuses
+ *     description: Retrieve list of all available project statuses
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Project statuses retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 project_statuses:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["planning", "in_progress", "on_hold", "completed", "cancelled"]
+ *             example:
+ *               project_statuses:
+ *                 - "planning"
+ *                 - "in_progress"
+ *                 - "on_hold"
+ *                 - "completed"
+ *                 - "cancelled"
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+
+router.get('/statuses', authenticateToken, ProjectController.getProjectStatuses);
+
+/**
+ * @swagger
+ * /api/projects/priorities:
+ *   get:
+ *     summary: Get all available project priorities
+ *     description: Retrieve list of all available project priorities
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Project priorities retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 project_priorities:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["low", "medium", "high", "urgent"]
+ *             example:
+ *               project_priorities:
+ *                 - "low"
+ *                 - "medium"
+ *                 - "high"
+ *                 - "urgent"
+ *       401:
+ *         description: Not authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+router.get('/priorities', authenticateToken, ProjectController.getProjectPriorities);
+
+/**
+ * @swagger
  * /api/projects:
  *   get:
  *     summary: Get all projects with pagination and filters
