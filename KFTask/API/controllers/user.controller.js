@@ -221,6 +221,196 @@ const UserController = {
       return res.status(500).json({ message: 'Server error while updating user status' });
     }
   },
+  /**
+ * Get user's working relationship details
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - Working relationship details
+ */
+async getUserWorkingFor(req, res) {
+  try {
+    const userId = parseInt(req.params.id);
+    
+    // Check if user exists
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check permissions - users can see their own info, admins can see anyone's
+    if (req.user.role !== 'admin' && req.user.id !== userId) {
+      return res.status(403).json({
+        message: 'You do not have permission to view this information'
+      });
+    }
+
+    // If user is not working for anyone
+    if (!user.working_for) {
+      return res.status(200).json({
+        user_id: userId,
+        working_for: null,
+        working_relationship: 'independent',
+        details: {
+          user_name: `${user.first_name} ${user.last_name}`,
+          user_role: user.role,
+          working_type: user.working_type || 'N/A'
+        }
+      });
+    }
+
+    // Get details of who the user is working for
+    let workingForDetails = null;
+    
+    if (user.role === 'consultant' || user.working_for) {
+      // Get vendor details
+      const vendorQuery = await db.query(
+        `SELECT v.*, u.first_name as vendor_first_name, u.last_name as vendor_last_name, u.email as vendor_email
+         FROM vendors v
+         JOIN users u ON v.user_id = u.id
+         WHERE v.user_id = $1`,
+        [user.working_for]
+      );
+      
+      if (vendorQuery.rows.length > 0) {
+        const vendor = vendorQuery.rows[0];
+        workingForDetails = {
+          type: 'vendor',
+          vendor_id: vendor.id,
+          company_name: vendor.company_name,
+          vendor_contact: {
+            name: `${vendor.vendor_first_name} ${vendor.vendor_last_name}`,
+            email: vendor.vendor_email,
+            phone: vendor.contact_phone
+          },
+          service_type: vendor.service_type,
+          contract_period: {
+            start_date: vendor.contract_start_date,
+            end_date: vendor.contract_end_date
+          },
+          address: vendor.address
+        };
+      } else {
+        // If working_for points to a user who isn't a vendor, get basic user info
+        const supervisorQuery = await db.query(
+          `SELECT id, first_name, last_name, email, role, department
+           FROM users WHERE id = $1`,
+          [user.working_for]
+        );
+        
+        if (supervisorQuery.rows.length > 0) {
+          const supervisor = supervisorQuery.rows[0];
+          workingForDetails = {
+            type: 'internal',
+            supervisor_id: supervisor.id,
+            supervisor_name: `${supervisor.first_name} ${supervisor.last_name}`,
+            supervisor_email: supervisor.email,
+            supervisor_role: supervisor.role,
+            department: supervisor.department
+          };
+        }
+      }
+    }
+
+    return res.status(200).json({
+      user_id: userId,
+      working_for: user.working_for,
+      working_relationship: workingForDetails ? workingForDetails.type : 'unknown',
+      details: {
+        user_name: `${user.first_name} ${user.last_name}`,
+        user_role: user.role,
+        user_email: user.email,
+        working_type: user.working_type || 'N/A',
+        department: user.department
+      },
+      working_for_details: workingForDetails
+    });
+
+  } catch (error) {
+    console.error('Get user working for error:', error);
+    return res.status(500).json({ message: 'Server error while fetching working relationship' });
+  }
+},
+
+/**
+ * Get all users working for a specific vendor/company
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of users working for the specified entity
+ */
+async getUsersWorkingFor(req, res) {
+  try {
+    const workingForId = parseInt(req.params.workingForId);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // Check if the entity exists (could be vendor or internal user)
+    const entityQuery = await db.query(
+      'SELECT id, first_name, last_name, email, role FROM users WHERE id = $1',
+      [workingForId]
+    );
+
+    if (entityQuery.rows.length === 0) {
+      return res.status(404).json({ message: 'Entity not found' });
+    }
+
+    // Check permissions
+    if (req.user.role !== 'admin' && req.user.id !== workingForId) {
+      return res.status(403).json({
+        message: 'You do not have permission to view this information'
+      });
+    }
+
+    // Get all users working for this entity
+    const usersQuery = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, u.email, u.role, u.department, 
+              u.position, u.designation, u.type, u.working_type, u.status, u.created_at
+       FROM users u
+       WHERE u.working_for = $1
+       ORDER BY u.first_name, u.last_name
+       LIMIT $2 OFFSET $3`,
+      [workingForId, limit, offset]
+    );
+
+    // Count total users working for this entity
+    const countQuery = await db.query(
+      'SELECT COUNT(*) FROM users WHERE working_for = $1',
+      [workingForId]
+    );
+    const total = parseInt(countQuery.rows[0].count);
+
+    // Get entity details (vendor info if applicable)
+    let entityDetails = entityQuery.rows[0];
+    
+    // Check if this entity is a vendor
+    const vendorQuery = await db.query(
+      'SELECT * FROM vendors WHERE user_id = $1',
+      [workingForId]
+    );
+    
+    if (vendorQuery.rows.length > 0) {
+      entityDetails.vendor_info = vendorQuery.rows[0];
+      entityDetails.entity_type = 'vendor';
+    } else {
+      entityDetails.entity_type = 'internal';
+    }
+
+    return res.status(200).json({
+      working_for_entity: entityDetails,
+      users: usersQuery.rows,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get users working for error:', error);
+    return res.status(500).json({ message: 'Server error while fetching users' });
+  }
+},
 
   /**
    * Delete user

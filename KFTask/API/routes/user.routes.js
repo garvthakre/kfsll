@@ -361,6 +361,171 @@ router.patch('/:id/status', [
 
 /**
  * @swagger
+ * /api/users/{id}/working-for:
+ *   get:
+ *     summary: Get user's working relationship details
+ *     description: Shows who the user is working for (vendor/company) and relationship details
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: Working relationship details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user_id:
+ *                   type: integer
+ *                   example: 123
+ *                 working_for:
+ *                   type: integer
+ *                   example: 456
+ *                   nullable: true
+ *                 working_relationship:
+ *                   type: string
+ *                   enum: [vendor, internal, independent, unknown]
+ *                   example: vendor
+ *                 details:
+ *                   type: object
+ *                   properties:
+ *                     user_name:
+ *                       type: string
+ *                       example: "John Doe"
+ *                     user_role:
+ *                       type: string
+ *                       example: "consultant"
+ *                     user_email:
+ *                       type: string
+ *                       example: "john@example.com"
+ *                     working_type:
+ *                       type: string
+ *                       example: "full-time"
+ *                     department:
+ *                       type: string
+ *                       example: "IT"
+ *                 working_for_details:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     type:
+ *                       type: string
+ *                       enum: [vendor, internal]
+ *                     company_name:
+ *                       type: string
+ *                       example: "ABC Consulting"
+ *                     vendor_contact:
+ *                       type: object
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Not authorized
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:id/working-for', authenticateToken, UserController.getUserWorkingFor);
+
+/**
+ * @swagger
+ * /api/users/working-for/{workingForId}:
+ *   get:
+ *     summary: Get all users working for a specific vendor/company
+ *     description: Returns list of users who are working for the specified vendor or internal entity
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: workingForId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID of the vendor/company that users are working for
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Results per page
+ *     responses:
+ *       200:
+ *         description: List of users working for the specified entity
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 working_for_entity:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     first_name:
+ *                       type: string
+ *                     last_name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     role:
+ *                       type: string
+ *                     entity_type:
+ *                       type: string
+ *                       enum: [vendor, internal]
+ *                     vendor_info:
+ *                       type: object
+ *                       nullable: true
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/User'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     pages:
+ *                       type: integer
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Not authorized
+ *       404:
+ *         description: Entity not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/working-for/:workingForId', authenticateToken, UserController.getUsersWorkingFor);
+
+
+/**
+ * @swagger
  * /api/users/{id}:
  *   delete:
  *     summary: Delete a user
