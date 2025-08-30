@@ -203,7 +203,36 @@ const router = express.Router();
  *         description: Server error
  */
 router.get('/', authenticateToken, UserController.getAllUsers);
-
+ /**
+ * @swagger
+ * /api/users/roles:
+ *   get:
+ *     summary: Get all available user roles
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of available roles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 roles:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["admin", "manager", "employee", "consultant", "vendor"]
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/roles', authenticateToken, UserController.getUserRoles);
 /**
  * @swagger
  * /api/users/{id}:
@@ -523,7 +552,7 @@ router.get('/:id/working-for', authenticateToken, UserController.getUserWorkingF
  */
 router.get('/working-for/:workingForId', authenticateToken, UserController.getUsersWorkingFor);
 
-
+ 
 /**
  * @swagger
  * /api/users/{id}:

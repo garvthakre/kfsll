@@ -411,6 +411,34 @@ async getUsersWorkingFor(req, res) {
     return res.status(500).json({ message: 'Server error while fetching users' });
   }
 },
+/**
+ * Get all available user roles
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of available roles
+ */
+async getUserRoles(req, res) {
+  try {
+    const roles = [
+      'admin',
+      'manager', 
+      'employee',
+      'consultant',
+      'vendor'
+    ];
+
+    return res.status(200).json({
+      success: true,
+      roles: roles
+    });
+  } catch (error) {
+    console.error('Get user roles error:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Server error while fetching roles' 
+    });
+  }
+},
 
   /**
    * Delete user
