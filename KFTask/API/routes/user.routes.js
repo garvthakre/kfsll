@@ -473,6 +473,119 @@ router.get('/:id/working-for', authenticateToken, UserController.getUserWorkingF
 
 /**
  * @swagger
+ * /api/users/{id}/projects:
+ *   get:
+ *     summary: Get all projects that a user is part of
+ *     description: Returns projects where user is either a manager or team member. Users can only see their own projects, admins can see any user's projects.
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Results per page
+ *     responses:
+ *       200:
+ *         description: List of projects user is involved in
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 123
+ *                     name:
+ *                       type: string
+ *                       example: "John Doe"
+ *                     email:
+ *                       type: string
+ *                       example: "john@example.com"
+ *                     role:
+ *                       type: string
+ *                       example: "employee"
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       priority:
+ *                         type: string
+ *                       project_type:
+ *                         type: string
+ *                       start_date:
+ *                         type: string
+ *                         format: date
+ *                       end_date:
+ *                         type: string
+ *                         format: date
+ *                       budget:
+ *                         type: number
+ *                       manager_name:
+ *                         type: string
+ *                       client_name:
+ *                         type: string
+ *                       task_count:
+ *                         type: integer
+ *                       completed_tasks:
+ *                         type: integer
+ *                       user_role_in_project:
+ *                         type: string
+ *                         description: Role of the user in this specific project
+ *                         example: "member"
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 25
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     pages:
+ *                       type: integer
+ *                       example: 3
+ *       401:
+ *         description: Not authenticated
+ *       403:
+ *         description: Not authorized - can only view own projects unless admin
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:id/projects', authenticateToken, UserController.getUserProjects);
+/**
+ * @swagger
  * /api/users/working-for/{workingForId}:
  *   get:
  *     summary: Get all users working for a specific vendor/company

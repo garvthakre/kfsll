@@ -439,6 +439,87 @@ async getUserRoles(req, res) {
     });
   }
 },
+/**
+ * Get all projects that a user is part of
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of projects user is involved in
+ */
+async getUserProjects(req, res) {
+  try {
+    const userId = parseInt(req.params.id);
+    
+    // Check if user exists
+    const user = await UserModel.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check permissions - users can see their own projects, admins can see anyone's
+    if (req.user.role !== 'admin' && req.user.id !== userId) {
+      return res.status(403).json({
+        message: 'You do not have permission to view this information'
+      });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // Get projects where user is either manager or team member
+    const query = `
+      SELECT DISTINCT p.*, 
+        u.first_name || ' ' || u.last_name as manager_name,
+        c.first_name || ' ' || c.last_name as client_name,
+        (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id) as task_count,
+        (SELECT COUNT(*) FROM tasks t WHERE t.project_id = p.id AND t.status = 'completed') as completed_tasks,
+        CASE 
+          WHEN p.manager_id = $1 THEN 'manager'
+          ELSE ptm.role
+        END as user_role_in_project
+      FROM projects p
+      LEFT JOIN users u ON p.manager_id = u.id
+      LEFT JOIN users c ON p.client_id = c.id
+      LEFT JOIN project_team_members ptm ON p.id = ptm.project_id AND ptm.user_id = $1
+      WHERE p.manager_id = $1 OR ptm.user_id = $1
+      ORDER BY p.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+
+    const { rows: projects } = await db.query(query, [userId, limit, offset]);
+
+    // Count total projects for pagination
+    const countQuery = `
+      SELECT COUNT(DISTINCT p.id) as total
+      FROM projects p
+      LEFT JOIN project_team_members ptm ON p.id = ptm.project_id AND ptm.user_id = $1
+      WHERE p.manager_id = $1 OR ptm.user_id = $1
+    `;
+
+    const { rows: countResult } = await db.query(countQuery, [userId]);
+    const total = parseInt(countResult[0].total);
+
+    return res.status(200).json({
+      user: {
+        id: user.id,
+        name: `${user.first_name} ${user.last_name}`,
+        email: user.email,
+        role: user.role
+      },
+      projects,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user projects error:', error);
+    return res.status(500).json({ message: 'Server error while fetching user projects' });
+  }
+},
 
   /**
    * Delete user
