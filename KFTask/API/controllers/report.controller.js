@@ -386,7 +386,7 @@ export const getProjectStatusReport = async (req, res, next) => {
 };
 
 /**
- * Get vendor performance report
+ * Get vendor performance report with filtering
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
@@ -395,8 +395,10 @@ export const getVendorPerformanceReport = async (req, res, next) => {
   try {
     const { 
       vendor_id,
+      consultant_id,
       start_date,
-      end_date
+      end_date,
+      task_status
     } = req.query;
     
     // Initialize query parameters array
@@ -411,6 +413,8 @@ export const getVendorPerformanceReport = async (req, res, next) => {
         COUNT(DISTINCT c.id) AS total_consultants,
         COUNT(t.id) AS total_tasks,
         SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
+        SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_tasks,
+        SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END) AS pending_tasks,
         SUM(CASE WHEN t.due_date < CURRENT_DATE AND t.status != 'completed' THEN 1 ELSE 0 END) AS overdue_tasks,
         CASE 
           WHEN COUNT(t.id) = 0 THEN 0 
@@ -418,7 +422,10 @@ export const getVendorPerformanceReport = async (req, res, next) => {
         END AS completion_rate,
         ROUND(AVG(CASE WHEN t.status = 'completed' THEN 
           EXTRACT(EPOCH FROM (t.updated_at - t.created_at))/3600/24 
-        ELSE NULL END), 2) AS avg_completion_days
+        ELSE NULL END), 2) AS avg_completion_days,
+        ROUND(AVG(CASE WHEN t.due_date IS NOT NULL AND t.status = 'completed' THEN 
+          EXTRACT(EPOCH FROM (t.due_date - t.updated_at))/3600/24 
+        ELSE NULL END), 2) AS avg_days_before_due
       FROM vendors v
       LEFT JOIN users u ON v.user_id = u.id
       LEFT JOIN projects p ON p.project_type LIKE '%Vendor - ' || v.company_name || '%'
@@ -429,12 +436,19 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       WHERE 1=1
     `;
     
-    // Apply filters
+    // Apply vendor filter
     if (vendor_id) {
       queryParams.push(vendor_id);
       query += ` AND v.id = $${queryParams.length}`;
     }
     
+    // Apply consultant filter
+    if (consultant_id) {
+      queryParams.push(consultant_id);
+      query += ` AND c.id = $${queryParams.length}`;
+    }
+    
+    // Apply date filters
     if (start_date) {
       queryParams.push(start_date);
       query += ` AND (t.created_at >= $${queryParams.length}::date OR t.created_at IS NULL)`;
@@ -445,24 +459,44 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       query += ` AND (t.created_at <= $${queryParams.length}::date OR t.created_at IS NULL)`;
     }
     
+    // Apply task status filter
+    if (task_status) {
+      
+      const statusArray = task_status.split(',').map(status => status.trim());
+      const statusPlaceholders = statusArray.map((_, index) => `$${queryParams.length + index + 1}`).join(',');
+      queryParams.push(...statusArray);
+      query += ` AND (t.status IN (${statusPlaceholders}) OR t.status IS NULL)`;
+    }
+    
     // Group and order by
     query += ` 
       GROUP BY v.id, v.company_name
       ORDER BY v.company_name
     `;
     
-    // Execute query
+    // Execute main query
     const result = await db.query(query, queryParams);
     
-    // For each vendor, get their consultants performance
+    // For each vendor, get their consultants performance with the  filters
     for (const vendor of result.rows) {
       let consultantsQuery = `
         SELECT 
           u.id AS user_id,
           u.first_name || ' ' || u.last_name AS user_name,
+          u.email,
+          con.specialization,
           COUNT(t.id) AS total_tasks,
           SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
-          SUM(CASE WHEN t.due_date < CURRENT_DATE AND t.status != 'completed' THEN 1 ELSE 0 END) AS overdue_tasks
+          SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_tasks,
+          SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END) AS pending_tasks,
+          SUM(CASE WHEN t.due_date < CURRENT_DATE AND t.status != 'completed' THEN 1 ELSE 0 END) AS overdue_tasks,
+          CASE 
+            WHEN COUNT(t.id) = 0 THEN 0 
+            ELSE ROUND((SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END)::numeric / COUNT(t.id)) * 100, 2)
+          END AS completion_rate,
+          ROUND(AVG(CASE WHEN t.status = 'completed' THEN 
+            EXTRACT(EPOCH FROM (t.updated_at - t.created_at))/3600/24 
+          ELSE NULL END), 2) AS avg_completion_days
         FROM users u
         JOIN consultants c ON u.id = c.user_id
         JOIN vendors v ON u.working_for = v.user_id
@@ -473,6 +507,13 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       
       const consultantsParams = [vendor.vendor_id];
       
+      // Apply consultant filter for individual consultant data
+      if (consultant_id) {
+        consultantsParams.push(consultant_id);
+        consultantsQuery += ` AND u.id = $${consultantsParams.length}`;
+      }
+      
+      // Apply date filters
       if (start_date) {
         consultantsParams.push(start_date);
         consultantsQuery += ` AND (t.created_at >= $${consultantsParams.length}::date OR t.created_at IS NULL)`;
@@ -483,14 +524,33 @@ export const getVendorPerformanceReport = async (req, res, next) => {
         consultantsQuery += ` AND (t.created_at <= $${consultantsParams.length}::date OR t.created_at IS NULL)`;
       }
       
+      // Apply task status filter
+      if (task_status) {
+        const statusArray = task_status.split(',').map(status => status.trim());
+        const statusPlaceholders = statusArray.map((_, index) => `$${consultantsParams.length + index + 1}`).join(',');
+        consultantsParams.push(...statusArray);
+        consultantsQuery += ` AND (t.status IN (${statusPlaceholders}) OR t.status IS NULL)`;
+      }
+      
       consultantsQuery += `
-        GROUP BY u.id, u.first_name, u.last_name
+        GROUP BY u.id, u.first_name, u.last_name, u.email, c.specialization
         ORDER BY u.first_name, u.last_name
       `;
       
       const consultantsResult = await db.query(consultantsQuery, consultantsParams);
       vendor.consultants = consultantsResult.rows;
     }
+    
+    // Calculate summary statistics
+    const summary = {
+      total_vendors: result.rows.length,
+      total_consultants: result.rows.reduce((sum, vendor) => sum + parseInt(vendor.total_consultants || 0), 0),
+      total_tasks: result.rows.reduce((sum, vendor) => sum + parseInt(vendor.total_tasks || 0), 0),
+      total_completed_tasks: result.rows.reduce((sum, vendor) => sum + parseInt(vendor.completed_tasks || 0), 0),
+      total_overdue_tasks: result.rows.reduce((sum, vendor) => sum + parseInt(vendor.overdue_tasks || 0), 0),
+      overall_completion_rate: result.rows.length > 0 ? 
+        Math.round((result.rows.reduce((sum, vendor) => sum + parseFloat(vendor.completion_rate || 0), 0) / result.rows.length) * 100) / 100 : 0
+    };
     
     // Log this report access
     await logUserAction(
@@ -502,13 +562,16 @@ export const getVendorPerformanceReport = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: result.rows,
-      filters: req.query
+      summary,
+      filters: req.query,
+      generated_at: new Date().toISOString()
     });
+    
   } catch (error) {
+    console.error('Error generating vendor performance report:', error);
     next(error);
   }
 };
-
 /**
  * Export report to CSV/Excel
  * @param {Object} req - Express request object
