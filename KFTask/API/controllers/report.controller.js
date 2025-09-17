@@ -4,7 +4,7 @@
 // const    = require('../utils/vendor.utils');
 import db from '../config/db.js';
 import { logUserAction } from '../utils/audit.utils.js';
-import {generateProjectStatusReport,generateTaskReport,generateUserLogsReport,generateUserPerformanceReport,generateVendorPerformanceReport } from '../utils/report.utils.js';
+import {generateProjectStatusReport,generateTaskReport,generateUserLogsReport,generateUserPerformanceReport,generateVendorPerformanceReport,exportReportToFile } from '../utils/report.utils.js';
 import  {getVendorConsultantIds,getVendorIdByUserId }  from '../utils/vendor.utils.js';
 
 /**

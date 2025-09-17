@@ -112,7 +112,7 @@ const ProjectController = {
         department,
         priority,
         project_type, // Added project_type
-        team_members
+        
       } = req.body;
 
       // Create transaction
@@ -126,7 +126,7 @@ const ProjectController = {
         const newProject = await ProjectModel.create({
           title,
           description,
-          client_id,
+          
           start_date,
           end_date,
           status,
@@ -137,16 +137,7 @@ const ProjectController = {
           project_type // Added project_type
         });
 
-        // Add team members if provided
-        if (team_members && Array.isArray(team_members)) {
-          for (const member of team_members) {
-            await ProjectModel.addTeamMember(
-              newProject.id, 
-              member.user_id, 
-              member.role || 'member'
-            );
-          }
-        }
+      
 
         // Log project creation
         await client.query(
@@ -159,7 +150,7 @@ const ProjectController = {
 
         // Get updated project with team members
         const project = await ProjectModel.findById(newProject.id);
-        project.team_members = await ProjectModel.getTeamMembers(newProject.id);
+        
 
         return res.status(201).json({
           message: 'Project created successfully',

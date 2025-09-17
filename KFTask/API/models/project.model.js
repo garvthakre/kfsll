@@ -14,7 +14,7 @@ const ProjectModel = {
     const {
       title,
       description,
-      client_id,
+     
       start_date,
       end_date,
       status,
@@ -27,15 +27,15 @@ const ProjectModel = {
 
     const query = `
       INSERT INTO projects 
-      (title, description, client_id, start_date, end_date, status, budget, manager_id, department, priority, project_type)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      (title, description,  start_date, end_date, status, budget, manager_id, department, priority, project_type)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10  )
       RETURNING *
     `;
 
     const values = [
       title,
       description,
-      client_id,
+ 
       start_date,
       end_date,
       status || 'planning',

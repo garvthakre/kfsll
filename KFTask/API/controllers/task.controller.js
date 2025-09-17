@@ -122,7 +122,7 @@ const TaskController = {
         description,
         project_id,
         assignee_id,
-        status,
+       
         priority,
         due_date,
         estimated_hours
@@ -142,7 +142,7 @@ const TaskController = {
         description,
         project_id,
         assignee_id,
-        status,
+        
         priority,
         due_date,
         estimated_hours,

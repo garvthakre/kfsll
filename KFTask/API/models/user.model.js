@@ -17,7 +17,7 @@ async create(userData) {
     first_name, 
     last_name, 
     email, 
-    password, 
+     
     role, 
     department, 
     position,
@@ -25,18 +25,19 @@ async create(userData) {
     designation,
     type,
     working_type,
-    working_for
+    working_for,
+    phone_no
   } = userData;
-
+    const defaultPassword = 'kftask@123';
   // Hash password
   const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
+  const hashedPassword = await bcrypt.hash(defaultPassword, salt);
 
   const query = `
     INSERT INTO users 
-    (first_name, last_name, email, password, role, department, position, profile_image, designation, type, working_type, working_for) 
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
-    RETURNING id, first_name, last_name, email, role, department, position, status, designation, type, working_type, working_for, created_at
+    (first_name, last_name, email, password, role, department, position, profile_image, designation, type, working_type, working_for,phone_no) 
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,$13) 
+    RETURNING id, first_name, last_name, email, role, department, position, status, designation, type, working_type, working_for,phone_no, created_at
   `;
 
   const values = [
@@ -51,7 +52,8 @@ async create(userData) {
     designation || null,
     type || null,
     working_type || null,
-    working_for || null
+    working_for || null,
+    phone_no || null
   ];
 
   try {

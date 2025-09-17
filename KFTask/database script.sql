@@ -158,7 +158,7 @@ CREATE INDEX idx_daily_updates_date ON daily_updates(update_date);
 
 -- Insert default admin user (password: admin123)
 INSERT INTO users (first_name, last_name, email, password, role)
-VALUES ('Admin', 'User', 'admin@kf-taskmanager.com', '$2b$10$XpjBwIN/A.7rSWdR.2iB9OSkGO4N3hFP8XBx46wBL2LKZ9BQ5n93O', 'admin');
+VALUES ('Admin', 'User', 'admin@kf-taskmanager.com', '$2b$10$YvQ8hC9n8ccU6XzNzw/Y4eugVKAic768VJwGqPvzXQwwwO/ZYnQHu', 'admin');
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_modified_column()

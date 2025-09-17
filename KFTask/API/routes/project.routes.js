@@ -827,11 +827,7 @@ router.post('/', [
     .withMessage('Title is required')
     .isLength({ min: 1, max: 255 })
     .withMessage('Title must be between 1 and 255 characters'),
-  check('client_id')
-    .notEmpty()
-    .withMessage('Client ID is required')
-    .isInt({ min: 1 })
-    .withMessage('Client ID must be a positive integer'),
+ 
   check('project_type')
     .optional()
     .isString()

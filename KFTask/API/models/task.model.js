@@ -16,7 +16,7 @@ const TaskModel = {
       description,
       project_id,
       assignee_id,
-      status,
+      
       priority,
       due_date,
       estimated_hours,
@@ -25,8 +25,8 @@ const TaskModel = {
 
     const query = `
       INSERT INTO tasks 
-      (title, description, project_id, assignee_id, status, priority, due_date, estimated_hours, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      (title, description, project_id, assignee_id,   priority, due_date, estimated_hours, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8 )
       RETURNING *
     `;
 
@@ -35,7 +35,7 @@ const TaskModel = {
       description,
       project_id,
       assignee_id,
-      status || 'to_do',
+       
       priority || 'medium',
       due_date,
       estimated_hours || 0,

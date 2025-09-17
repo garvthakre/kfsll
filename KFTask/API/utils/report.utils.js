@@ -16,6 +16,11 @@ import  {
    
   isConsultantFromVendor }
  from './vendor.utils.js';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 /**
  * Generate task report
@@ -50,7 +55,7 @@ export const generateTaskReport = async (req) => {
       u.first_name || ' ' || u.last_name AS assigned_to,
       cu.first_name || ' ' || cu.last_name AS created_by,
       p.id AS project_id,
-      p.name AS project_name,
+      p.title AS project_name,
       p.status AS project_status
     FROM tasks t
     JOIN task_assignments ta ON t.id = ta.task_id
@@ -111,7 +116,7 @@ export const generateTaskReport = async (req) => {
   }
   
   // Add order by
-  query += ` ORDER BY p.name, t.due_date`;
+  query += ` ORDER BY p.title, t.due_date`;
   
   // Execute query
   const result = await db.query(query, queryParams);
@@ -268,7 +273,7 @@ export const generateProjectStatusReport = async (req) => {
   let query = `
     SELECT 
       p.id AS project_id,
-      p.name AS project_name,
+      p.title AS project_name,
       p.description,
       p.status AS project_status,
       p.priority,
@@ -328,7 +333,7 @@ export const generateProjectStatusReport = async (req) => {
   
   // Group and order by
   query += ` 
-    GROUP BY p.id, p.name, p.description, p.status, p.priority, p.start_date, p.end_date, 
+    GROUP BY p.id, p.title, p.description, p.status, p.priority, p.start_date, p.end_date, 
       p.created_at, p.updated_at, u.first_name, u.last_name, p.client_name, p.budget
     ORDER BY p.start_date DESC
   `;
@@ -478,7 +483,7 @@ export const generateVendorPerformanceReport = async (req) => {
     const projectsQuery = `
       SELECT 
         p.id,
-        p.name,
+        p.title,
         p.status,
         p.start_date,
         p.end_date,
@@ -487,7 +492,7 @@ export const generateVendorPerformanceReport = async (req) => {
       FROM projects p
       LEFT JOIN tasks t ON p.id = t.project_id
       WHERE p.project_type LIKE '%Vendor - ${vendor.company_name}%'
-      GROUP BY p.id, p.name, p.status, p.start_date, p.end_date
+      GROUP BY p.id, p.title, p.status, p.start_date, p.end_date
       ORDER BY p.start_date DESC
     `;
     

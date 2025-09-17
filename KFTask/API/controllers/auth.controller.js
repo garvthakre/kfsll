@@ -118,7 +118,9 @@ async register(req, res) {
       type,
       working_type,
       working_for,
-      profile_image
+       
+      profile_image,
+      phone_no,
     } = req.body;
 
     // Check if email already exists
@@ -148,7 +150,9 @@ async register(req, res) {
       type,
       working_type,
       working_for,
-      profile_image
+      profile_image,
+      phone_no
+
     });
 
     // Log user creation

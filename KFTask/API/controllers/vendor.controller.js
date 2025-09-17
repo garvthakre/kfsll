@@ -357,12 +357,11 @@ export const getVendorConsultants = async (req, res, next) => {
     // We identify consultants working for this vendor through their association in the users table
     // by checking which users are working for this vendor
     const consultants = await db.query(
-      `SELECT c.*, u.first_name, u.last_name, u.email, u.status
-       FROM consultants c
-       JOIN users u ON c.user_id = u.id
-       WHERE u.working_for = $1
+      `SELECT u.id, u.first_name, u.last_name, u.email, u.status, u.department, u.position, u.designation, u.type, u.working_type
+       FROM users u
+       WHERE u.role = 'consultant' AND u.working_for = $1
        ORDER BY u.first_name, u.last_name`,
-      [vendor.rows[0].user_id]
+      [id]  
     );
     
     res.status(200).json({
@@ -512,11 +511,10 @@ export const assignTaskToConsultant = async (req, res, next) => {
     }
     
     // Check if consultant exists and is active
-    const consultant = await db.query(
-      `SELECT c.*, u.status, u.working_for, u.first_name, u.last_name
-       FROM consultants c
-       JOIN users u ON c.user_id = u.id
-       WHERE c.user_id = $1`,
+  const consultant = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, u.status, u.working_for, u.role
+       FROM users u
+       WHERE u.id = $1 AND u.role = 'consultant'`,
       [consultantId]
     );
     

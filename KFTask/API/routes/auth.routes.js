@@ -214,7 +214,7 @@ router.post('/register', [
   check('first_name').notEmpty().withMessage('First name is required'),
   check('last_name').notEmpty().withMessage('Last name is required'),
   check('email').isEmail().withMessage('Please provide a valid email'),
-  check('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  check('phone_no').notEmpty().withMessage('Phone number is req'),
   check('working_for').optional().isInt({ min: 1 }).withMessage('working_for must be a valid vendor ID')
 ], authenticateToken, AuthController.register);
 
