@@ -59,7 +59,16 @@ const ProjectController = {
       return res.status(500).json({ message: 'Server error while fetching projects' });
     }
   },
-
+async getAllProjectIdsAndTitles(req, res) {
+  try {
+    const projects = await ProjectModel.getAllProjectIdsAndTitles();
+    return res.status(200).json({ projects });
+  } catch (error) {
+    console.error('Get all project IDs and titles error:', error);
+    return res.status(500).json({ message: 'Server error while fetching projects' });
+  }
+}
+,
   /**
    * Get project by ID
    * @param {Object} req - Express request object

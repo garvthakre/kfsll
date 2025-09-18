@@ -25,7 +25,7 @@ const AuthController = {
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { email, password, role } = req.body;
+      const { email, password } = req.body;
 
       // Find user by email
       const user = await UserModel.findByEmail(email);
@@ -33,13 +33,7 @@ const AuthController = {
       if (!user) {
         return res.status(401).json({ message: 'Invalid email or password' });
       }
-
-      // Check if user has the specified role
-      if (role && user.role !== role.toLowerCase()) {
-        return res.status(403).json({ 
-          message: `Access denied. You don't have ${role} privileges.`
-        });
-      }
+ 
 
       // Check if user is active
       if (user.status !== 'active') {

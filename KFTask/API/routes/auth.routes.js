@@ -23,17 +23,17 @@ const router = express.Router();
  *           type: string
  *           format: password
  *           description: User's password
- *         role:
- *           type: string
- *           enum: [admin, manager, employee, consultant, vendor]
- *           description: Role to login as (optional)
  *     RegisterRequest:
  *       type: object
  *       required:
  *         - first_name
  *         - last_name
+ *         - designation
+ *         - role
+ *         - type
+ *         - working_type
  *         - email
- *         - password
+ *         - phone_no
  *       properties:
  *         first_name:
  *           type: string
@@ -41,36 +41,29 @@ const router = express.Router();
  *         last_name:
  *           type: string
  *           description: User's last name
+ *         designation:
+ *           type: string
+ *           description: User's designation
+ *         role:
+ *           type: string
+ *           enum: [admin, manager, employee, consultant, vendor]
+ *           description: User role
+ *         type:
+ *           type: string
+ *           description: User type
+ *         working_type:
+ *           type: string
+ *           description: Working type
+ *         working_for:
+ *           type: integer
+ *           description: Vendor ID that the user is working for (optional)
  *         email:
  *           type: string
  *           format: email
  *           description: User's email address
- *         password:
+ *         phone_no:
  *           type: string
- *           format: password
- *           description: User's password (min 6 characters)
- *         role:
- *           type: string
- *           enum: [admin, manager, employee, consultant, vendor]
- *           description: User role (admin users only)
- *         department:
- *           type: string
- *           description: User's department
- *         position:
- *           type: string
- *           description: User's job position
- *         designation:
- *           type: string
- *           description: User's designation
- *         type:
- *           type: string
- *           description: User type (e.g., permanent, contract, temporary)
- *         working_type:
- *           type: string
- *           description: Working type (e.g., full_time, part_time, remote)
- *         working_for:
- *           type: integer
- *           description: Vendor ID that the user is working for (foreign key to vendors table)
+ *           description: Phone number
  *     ChangePasswordRequest:
  *       type: object
  *       required:
@@ -97,21 +90,12 @@ const router = express.Router();
  *         last_name:
  *           type: string
  *           description: Last name
- *         email:
- *           type: string
- *           description: Email address
- *         role:
- *           type: string
- *           description: User role
- *         department:
- *           type: string
- *           description: Department
- *         position:
- *           type: string
- *           description: Job position
  *         designation:
  *           type: string
  *           description: Designation
+ *         role:
+ *           type: string
+ *           description: User role
  *         type:
  *           type: string
  *           description: User type
@@ -121,9 +105,12 @@ const router = express.Router();
  *         working_for:
  *           type: integer
  *           description: Vendor ID that the user is working for
- *         status:
+ *         email:
  *           type: string
- *           description: Account status
+ *           description: Email address
+ *         phone_no:
+ *           type: string
+ *           description: Phone number
  */
 
 /**
@@ -214,7 +201,7 @@ router.post('/register', [
   check('first_name').notEmpty().withMessage('First name is required'),
   check('last_name').notEmpty().withMessage('Last name is required'),
   check('email').isEmail().withMessage('Please provide a valid email'),
-  check('phone_no').notEmpty().withMessage('Phone number is req'),
+  check('phone_no').notEmpty().withMessage('Phone number is required'),
   check('working_for').optional().isInt({ min: 1 }).withMessage('working_for must be a valid vendor ID')
 ], authenticateToken, AuthController.register);
 

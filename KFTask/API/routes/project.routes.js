@@ -1,7 +1,3 @@
-// const express = require('express');
-// const { check } = require('express-validator');
-// const ProjectController = require('../controllers/project.controller');
-// const { authenticateToken, authorize } = require('../middleware/auth.middleware');
 import express from 'express';
 import { check } from 'express-validator';
 import ProjectController from '../controllers/project.controller.js';
@@ -112,20 +108,16 @@ const router = express.Router();
  *       type: object
  *       required:
  *         - title
- *         - client_id
+ *         - start_date
+ *         - end_date
+ *         - project_type
+ *         - status
  *       properties:
  *         title:
  *           type: string
  *           description: Project title
  *           minLength: 1
  *           maxLength: 255
- *         description:
- *           type: string
- *           description: Project description
- *         client_id:
- *           type: integer
- *           description: Client ID
- *           minimum: 1
  *         start_date:
  *           type: string
  *           format: date
@@ -137,25 +129,7 @@ const router = express.Router();
  *         status:
  *           type: string
  *           enum: [planning, in_progress, on_hold, completed, cancelled]
- *           default: planning
  *           description: Project status
- *         budget:
- *           type: number
- *           format: float
- *           minimum: 0
- *           description: Project budget
- *         manager_id:
- *           type: integer
- *           description: Project manager's user ID
- *         department:
- *           type: string
- *           description: Department responsible for the project
- *           maxLength: 100
- *         priority:
- *           type: string
- *           enum: [low, medium, high, urgent]
- *           default: medium
- *           description: Project priority
  *         project_type:
  *           type: string
  *           description: Type of the project
@@ -169,26 +143,6 @@ const router = express.Router();
  *             - design
  *             - data_analysis
  *             - infrastructure
- *         team_members:
- *           type: array
- *           items:
- *             type: object
- *             properties:
- *               user_id:
- *                 type: integer
- *                 description: User ID
- *                 minimum: 1
- *               role:
- *                 type: string
- *                 description: Role in the project
- *                 default: member
- *                 examples:
- *                   - member
- *                   - lead
- *                   - developer
- *                   - designer
- *                   - analyst
- *                   - tester
  *     UpdateProjectRequest:
  *       type: object
  *       properties:
@@ -346,6 +300,39 @@ const router = express.Router();
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/stats', authenticateToken, ProjectController.getProjectStats);
+/**
+ * @swagger
+ * /api/projects/ids-titles:
+ *   get:
+ *     summary: Get all projects (ID and title only)
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of project IDs and titles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: Project ID
+ *                       title:
+ *                         type: string
+ *                         description: Project title
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/ids-titles', authenticateToken, ProjectController.getAllProjectIdsAndTitles);
 
 /**
  * @swagger
@@ -387,11 +374,8 @@ router.get('/stats', authenticateToken, ProjectController.getProjectStats);
  *             example:
  *               project_types:
  *                 - value: "internal"
- 
  *                 - value: "client_project"
- 
  *                 - value: "research"
-                  
  *               total: 12
  *       401:
  *         description: Not authenticated
@@ -407,6 +391,7 @@ router.get('/stats', authenticateToken, ProjectController.getProjectStats);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/types', authenticateToken, ProjectController.getProjectTypes);
+
 /**
  * @swagger
  * /api/projects/statuses:
@@ -449,7 +434,6 @@ router.get('/types', authenticateToken, ProjectController.getProjectTypes);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-
 router.get('/statuses', authenticateToken, ProjectController.getProjectStatuses);
 
 /**
@@ -704,7 +688,7 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  * /api/projects:
  *   post:
  *     summary: Create a new project
- *     description: Create a new project with optional team members assignment
+ *     description: Create a new project with only essential fields - title, start date, end date, project type, and status
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -720,51 +704,28 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  *               description: Example of creating a web development project
  *               value:
  *                 title: "E-commerce Website"
- *                 description: "Build a modern e-commerce platform with payment integration"
- *                 client_id: 1
- *                 project_type: "web_development"
  *                 start_date: "2024-01-15"
  *                 end_date: "2024-06-15"
- *                 budget: 50000.00
- *                 department: "Development"
- *                 priority: "high"
+ *                 project_type: "web_development"
  *                 status: "planning"
- *                 team_members:
- *                   - user_id: 2
- *                     role: "lead"
- *                   - user_id: 3
- *                     role: "developer"
  *             mobile_app:
  *               summary: Mobile App Project
  *               description: Example of creating a mobile application project
  *               value:
  *                 title: "Task Management App"
- *                 description: "Cross-platform mobile task management application"
- *                 client_id: 2
- *                 project_type: "mobile_app"
  *                 start_date: "2024-02-01"
  *                 end_date: "2024-08-01"
- *                 budget: 75000.00
- *                 department: "Mobile Development"
- *                 priority: "medium"
- *                 team_members:
- *                   - user_id: 4
- *                     role: "lead"
- *                   - user_id: 5
- *                     role: "designer"
+ *                 project_type: "mobile_app"
+ *                 status: "planning"
  *             consulting:
  *               summary: Consulting Project
  *               description: Example of creating a consulting project
  *               value:
  *                 title: "Digital Transformation Strategy"
- *                 description: "Comprehensive digital transformation consulting"
- *                 client_id: 3
- *                 project_type: "consulting"
  *                 start_date: "2024-03-01"
  *                 end_date: "2024-05-01"
- *                 budget: 25000.00
- *                 department: "Consulting"
- *                 priority: "urgent"
+ *                 project_type: "consulting"
+ *                 status: "in_progress"
  *     responses:
  *       201:
  *         description: Project created successfully
@@ -777,14 +738,7 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  *                   type: string
  *                   example: "Project created successfully"
  *                 project:
- *                   allOf:
- *                     - $ref: '#/components/schemas/Project'
- *                     - type: object
- *                       properties:
- *                         team_members:
- *                           type: array
- *                           items:
- *                             $ref: '#/components/schemas/TeamMember'
+ *                   $ref: '#/components/schemas/Project'
  *       400:
  *         description: Validation error
  *         content:
@@ -805,8 +759,8 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  *               errors:
  *                 - field: "title"
  *                   message: "Title is required"
- *                 - field: "client_id"
- *                   message: "Client ID is required"
+ *                 - field: "start_date"
+ *                   message: "Start date is required"
  *       401:
  *         description: Not authenticated
  *         content:
@@ -827,45 +781,28 @@ router.post('/', [
     .withMessage('Title is required')
     .isLength({ min: 1, max: 255 })
     .withMessage('Title must be between 1 and 255 characters'),
- 
+  check('start_date')
+    .notEmpty()
+    .withMessage('Start date is required')
+    .isISO8601()
+    .withMessage('Start date must be a valid date'),
+  check('end_date')
+    .notEmpty()
+    .withMessage('End date is required')
+    .isISO8601()
+    .withMessage('End date must be a valid date'),
   check('project_type')
-    .optional()
+    .notEmpty()
+    .withMessage('Project type is required')
     .isString()
     .withMessage('Project type must be a string')
     .isLength({ max: 100 })
     .withMessage('Project type must not exceed 100 characters'),
-  check('budget')
-    .optional()
-    .isFloat({ min: 0 })
-    .withMessage('Budget must be a positive number'),
-  check('start_date')
-    .optional()
-    .isISO8601()
-    .withMessage('Start date must be a valid date'),
-  check('end_date')
-    .optional()
-    .isISO8601()
-    .withMessage('End date must be a valid date'),
   check('status')
-    .optional()
+    .notEmpty()
+    .withMessage('Status is required')
     .isIn(['planning', 'in_progress', 'on_hold', 'completed', 'cancelled'])
-    .withMessage('Status must be one of: planning, in_progress, on_hold, completed, cancelled'),
-  check('priority')
-    .optional()
-    .isIn(['low', 'medium', 'high', 'urgent'])
-    .withMessage('Priority must be one of: low, medium, high, urgent'),
-  check('department')
-    .optional()
-    .isLength({ max: 100 })
-    .withMessage('Department must not exceed 100 characters'),
-  check('team_members')
-    .optional()
-    .isArray()
-    .withMessage('Team members must be an array'),
-  check('team_members.*.user_id')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('Team member user_id must be a positive integer')
+    .withMessage('Status must be one of: planning, in_progress, on_hold, completed, cancelled')
 ], ProjectController.createProject);
 
 /**
@@ -1296,7 +1233,5 @@ router.delete('/:id/team/:userId', [
     .isInt({ min: 1 })
     .withMessage('User ID must be a positive integer')
 ], ProjectController.removeTeamMember);
-
- 
 
 export default router;

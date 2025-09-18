@@ -20,23 +20,13 @@ const router = express.Router();
  *         last_name:
  *           type: string
  *           description: Last name
- *         email:
+ *         designation:
  *           type: string
- *           format: email
- *           description: Email address
+ *           description: Designation
  *         role:
  *           type: string
  *           enum: [admin, manager, employee, consultant, vendor]
  *           description: User role
- *         department:
- *           type: string
- *           description: Department
- *         position:
- *           type: string
- *           description: Job position
- *         designation:
- *           type: string
- *           description: Designation
  *         type:
  *           type: string
  *           description: User type
@@ -46,13 +36,17 @@ const router = express.Router();
  *         working_for:
  *           type: integer
  *           description: Vendor ID that the user is working for
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Email address
+ *         mobile_number:
+ *           type: string
+ *           description: Mobile phone number
  *         status:
  *           type: string
  *           enum: [active, inactive, suspended]
  *           description: Account status
- *         profile_image:
- *           type: string
- *           description: Profile image URL
  *         created_at:
  *           type: string
  *           format: date-time
@@ -66,8 +60,12 @@ const router = express.Router();
  *       required:
  *         - first_name
  *         - last_name
+ *         - designation
+ *         - role
+ *         - type
+ *         - working_type
  *         - email
- *         - password
+ *         - phone_no
  *       properties:
  *         first_name:
  *           type: string
@@ -75,27 +73,13 @@ const router = express.Router();
  *         last_name:
  *           type: string
  *           description: Last name
- *         email:
+ *         designation:
  *           type: string
- *           format: email
- *           description: Email address
- *         password:
- *           type: string
- *           format: password
- *           description: Password (min 6 characters)
+ *           description: Designation
  *         role:
  *           type: string
  *           enum: [admin, manager, employee, consultant, vendor]
  *           description: User role
- *         department:
- *           type: string
- *           description: Department
- *         position:
- *           type: string
- *           description: Job position
- *         designation:
- *           type: string
- *           description: Designation
  *         type:
  *           type: string
  *           description: User type
@@ -104,10 +88,14 @@ const router = express.Router();
  *           description: Working type
  *         working_for:
  *           type: integer
- *           description: Vendor ID that the user is working for
- *         profile_image:
+ *           description: Vendor ID that the user is working for (optional)
+ *         email:
  *           type: string
- *           description: Profile image URL
+ *           format: email
+ *           description: Email address
+ *         mobile_number:
+ *           type: string
+ *           description: Mobile phone number
  *     UpdateUserRequest:
  *       type: object
  *       properties:
@@ -117,12 +105,6 @@ const router = express.Router();
  *         last_name:
  *           type: string
  *           description: Last name
- *         department:
- *           type: string
- *           description: Department
- *         position:
- *           type: string
- *           description: Job position
  *         designation:
  *           type: string
  *           description: Designation
@@ -135,9 +117,9 @@ const router = express.Router();
  *         working_for:
  *           type: integer
  *           description: Vendor ID that the user is working for
- *         profile_image:
+ *         phone_no:
  *           type: string
- *           description: Profile image URL
+ *           description: Mobile phone number
  *     UpdateUserStatusRequest:
  *       type: object
  *       required:
@@ -147,7 +129,112 @@ const router = express.Router();
  *           type: string
  *           enum: [active, inactive, suspended]
  *           description: Account status
+ *     DashboardOverview:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           example: true
+ *         data:
+ *           type: object
+ *           properties:
+ *             totalUsers:
+ *               type: integer
+ *               example: 124
+ *               description: Total number of users in the system
+ *             activeProjects:
+ *               type: integer
+ *               example: 18
+ *               description: Number of active projects (not completed or cancelled)
+ *             pendingTasks:
+ *               type: integer
+ *               example: 45
+ *               description: Number of pending tasks (not completed)
+ *     DetailedDashboardStats:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *         data:
+ *           type: object
+ *           properties:
+ *             overview:
+ *               type: object
+ *               properties:
+ *                 totalUsers:
+ *                   type: integer
+ *                 activeProjects:
+ *                   type: integer
+ *                 pendingTasks:
+ *                   type: integer
+ *             users:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: integer
+ *                 active:
+ *                   type: integer
+ *                 admin:
+ *                   type: integer
+ *                 manager:
+ *                   type: integer
+ *                 employee:
+ *                   type: integer
+ *             projects:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: integer
+ *                 planning:
+ *                   type: integer
+ *                 inProgress:
+ *                   type: integer
+ *                 completed:
+ *                   type: integer
+ *                 onHold:
+ *                   type: integer
+ *                 cancelled:
+ *                   type: integer
+ *             tasks:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: integer
+ *                 todo:
+ *                   type: integer
+ *                 inProgress:
+ *                   type: integer
+ *                 completed:
+ *                   type: integer
+ *                 onHold:
+ *                   type: integer
+ *                 overdue:
+ *                   type: integer
  */
+
+/**
+ * @swagger
+ * /api/users/dashboard/overview:
+ *   get:
+ *     summary: Get dashboard overview statistics
+ *     description: Returns basic dashboard data including total users, active projects, and pending tasks
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard overview data retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DashboardOverview'
+ *       401:
+ *         description: Authentication required
+ *       500:
+ *         description: Server error
+ */
+router.get('/dashboard/overview', authenticateToken, UserController.getDashboardOverview);
+ 
 
 /**
  * @swagger
@@ -203,6 +290,72 @@ const router = express.Router();
  *         description: Server error
  */
 router.get('/', authenticateToken, UserController.getAllUsers);
+/**
+ * @swagger
+ * /api/users/user:
+ *   get:
+ *     summary: Get all users (ID and name only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user IDs and names
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: User ID
+ *                       name:
+ *                         type: string
+ *                         description: User full name
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/ids-names', authenticateToken, UserController.getAllUserIdsAndNamesforuser);
+// /**
+//  * @swagger
+//  * /api/users/admin:
+//  *   get:
+//  *     summary: Get all users (ID and name only)
+//  *     tags: [Users]
+//  *     security:
+//  *       - bearerAuth: []
+//  *     responses:
+//  *       200:
+//  *         description: List of user IDs and names
+//  *         content:
+//  *           application/json:
+//  *             schema:
+//  *               type: object
+//  *               properties:
+//  *                 users:
+//  *                   type: array
+//  *                   items:
+//  *                     type: object
+//  *                     properties:
+//  *                       id:
+//  *                         type: integer
+//  *                         description: User ID
+//  *                       name:
+//  *                         type: string
+//  *                         description: User full name
+//  *       401:
+//  *         description: Not authenticated
+//  *       500:
+//  *         description: Server error
+//  */
+// router.get('/id-admin', authenticateToken, UserController.getAllUserIdsAndNamesforvendor);
  /**
  * @swagger
  * /api/users/roles:
@@ -233,6 +386,7 @@ router.get('/', authenticateToken, UserController.getAllUsers);
  *         description: Server error
  */
 router.get('/roles', authenticateToken, UserController.getUserRoles);
+
 /**
  * @swagger
  * /api/users/{id}:
@@ -267,42 +421,7 @@ router.get('/roles', authenticateToken, UserController.getUserRoles);
  */
 router.get('/:id', authenticateToken, UserController.getUserById);
 
-/**
- * @swagger
- * /api/users:
- *   post:
- *     summary: Create a new user
- *     description: Admin role required to create admin/manager users
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/CreateUserRequest'
- *     responses:
- *       201:
- *         description: User created successfully
- *       400:
- *         description: Validation error or email exists
- *       401:
- *         description: Not authenticated
- *       403:
- *         description: Not authorized
- *       500:
- *         description: Server error
- */
-router.post('/', [
-  authenticateToken,
-  check('first_name').notEmpty().withMessage('First name is required'),
-  check('last_name').notEmpty().withMessage('Last name is required'),
-  check('email').isEmail().withMessage('Please provide a valid email'),
-  check('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  check('working_for').optional().isInt({ min: 1 }).withMessage('working_for must be a valid vendor ID')
-], UserController.createUser);
-
+ 
 /**
  * @swagger
  * /api/users/{id}:
@@ -438,9 +557,9 @@ router.patch('/:id/status', [
  *                     working_type:
  *                       type: string
  *                       example: "full-time"
- *                     department:
+ *                     designation:
  *                       type: string
- *                       example: "IT"
+ *                       example: "Software Engineer"
  *                 working_for_details:
  *                   type: object
  *                   nullable: true
@@ -584,6 +703,7 @@ router.get('/:id/working-for', authenticateToken, UserController.getUserWorkingF
  *         description: Server error
  */
 router.get('/:id/projects', authenticateToken, UserController.getUserProjects);
+
 /**
  * @swagger
  * /api/users/working-for/{workingForId}:
@@ -665,7 +785,6 @@ router.get('/:id/projects', authenticateToken, UserController.getUserProjects);
  */
 router.get('/working-for/:workingForId', authenticateToken, UserController.getUsersWorkingFor);
 
- 
 /**
  * @swagger
  * /api/users/{id}:

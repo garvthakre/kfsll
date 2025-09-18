@@ -39,7 +39,26 @@ const UserController = {
       return res.status(500).json({ message: 'Server error while fetching users' });
     }
   },
-
+async getAllUserIdsAndNamesforuser(req, res) {
+  try {
+    const users = await UserModel.getAllUserIdsAndNamesforuser();
+    return res.status(200).json({ users });
+  } catch (error) {
+    console.error('Get all user IDs and names error:', error);
+    return res.status(500).json({ message: 'Server error while fetching users' });
+  }
+}
+,
+// async getAllUserIdsAndNamesforvendor(req, res) {
+//   try {
+//     const users = await UserModel.getAllUserIdsAndNamesforvendor();
+//     return res.status(200).json({ users });
+//   } catch (error) {
+//     console.error('Get all user IDs and names error:', error);
+//     return res.status(500).json({ message: 'Server error while fetching users' });
+//   }
+// }
+// ,
   /**
    * Get user by ID
    * @param {Object} req - Express request object
@@ -63,77 +82,7 @@ const UserController = {
     }
   },
 
-  /**
-   * Create new user
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @returns {Object} - New user details
-   */
-  async createUser(req, res) {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { 
-      first_name, 
-      last_name, 
-      email, 
-      password, 
-      role,
-      department,
-      position,
-      designation,
-      type,
-      working_type,
-      working_for,
-      profile_image
-    } = req.body;
-
-    // Check if email already exists
-    const existingUser = await UserModel.findByEmail(email);
-    if (existingUser) {
-      return res.status(400).json({ message: 'Email is already registered' });
-    }
-
-    // Only admin can create admin/manager users
-    if ((role === 'admin' || role === 'manager') && req.user.role !== 'admin') {
-      return res.status(403).json({ 
-        message: 'You do not have permission to create users with this role' 
-      });
-    }
-
-    const newUser = await UserModel.create({
-      first_name,
-      last_name,
-      email,
-      password,
-      role: role || 'employee',
-      department,
-      position,
-      designation,
-      type,
-      working_type,
-      working_for,
-      profile_image
-    });
-
-    // Log user creation activity
-    await db.query(
-      'INSERT INTO user_logs (user_id, action, description, ip_address) VALUES ($1, $2, $3, $4)',
-      [req.user.id, 'user_create', `Created user: ${newUser.id}`, req.ip]
-    );
-
-    return res.status(201).json({
-      message: 'User created successfully',
-      user: newUser
-    });
-  } catch (error) {
-    console.error('Create user error:', error);
-    return res.status(500).json({ message: 'Server error while creating user' });
-  }
-},
+ 
 
   /**
    * Update user
@@ -519,8 +468,53 @@ async getUserProjects(req, res) {
     console.error('Get user projects error:', error);
     return res.status(500).json({ message: 'Server error while fetching user projects' });
   }
-},
+},/**
+ * Get dashboard overview data
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - Dashboard overview statistics
+ */
+async getDashboardOverview(req, res) {
+  try {
+    // Get total users count
+    const totalUsersQuery = 'SELECT COUNT(*) as count FROM users';
+    const totalUsersResult = await db.query(totalUsersQuery);
+    const totalUsers = parseInt(totalUsersResult.rows[0].count);
 
+    // Get active projects count (projects that are not completed or cancelled)
+    const activeProjectsQuery = `
+      SELECT COUNT(*) as count 
+      FROM projects 
+      WHERE status NOT IN ('completed', 'cancelled')
+    `;
+    const activeProjectsResult = await db.query(activeProjectsQuery);
+    const activeProjects = parseInt(activeProjectsResult.rows[0].count);
+
+    // Get pending tasks count (tasks that are not completed)
+    const pendingTasksQuery = `
+      SELECT COUNT(*) as count 
+      FROM tasks 
+      WHERE status NOT IN ('completed', 'done')
+    `;
+    const pendingTasksResult = await db.query(pendingTasksQuery);
+    const pendingTasks = parseInt(pendingTasksResult.rows[0].count);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        totalUsers,
+        activeProjects,
+        pendingTasks
+      }
+    });
+  } catch (error) {
+    console.error('Dashboard overview error:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Server error while fetching dashboard data' 
+    });
+  }
+},
   /**
    * Delete user
    * @param {Object} req - Express request object

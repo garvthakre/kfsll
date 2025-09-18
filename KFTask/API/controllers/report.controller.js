@@ -124,35 +124,169 @@ export const getTaskReport = async (req, res, next) => {
   }
 };
 
-/**
- * Get user performance report
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
- */
+// /**
+//  * Get user performance report
+//  * @param {Object} req - Express request object
+//  * @param {Object} res - Express response object
+//  * @param {Function} next - Express next middleware function
+//  */
+// export const getUserPerformanceReport = async (req, res, next) => {
+//   try {
+//     const { 
+//       user_id,
+//       start_date,
+//       end_date
+//     } = req.query;
+    
+//     // For vendor users, they can only see their consultants' performance
+//     if (req.user.role === 'vendor') {
+//       const vendorId = await    getVendorIdByUserId(req.user.id);
+      
+//       if (!vendorId) {
+//         return res.status(403).json({
+//           success: false,
+//           message: 'You do not have permission to access this report'
+//         });
+//       }
+      
+//       if (user_id) {
+//         // Check if this consultant belongs to the vendor
+//         const isFromVendor = await    isConsultantFromVendor(vendorId, user_id);
+        
+//         if (!isFromVendor) {
+//           return res.status(403).json({
+//             success: false,
+//             message: 'You do not have permission to view this user\'s performance'
+//           });
+//         }
+//       }
+//     }
+    
+//     // Required user_id filter for non-admin users
+//     if (!user_id && req.user.role !== 'admin') {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'User ID filter is required'
+//       });
+//     }
+    
+//     // Initialize query parameters array
+//     const queryParams = [];
+    
+//     // Build base query for user performance
+//     let query = `
+//       SELECT 
+//         u.id AS user_id,
+//         u.first_name || ' ' || u.last_name AS user_name,
+//         COUNT(t.id) AS total_tasks,
+//         SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
+//         SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_tasks,
+//         SUM(CASE WHEN t.due_date < CURRENT_DATE AND t.status != 'completed' THEN 1 ELSE 0 END) AS overdue_tasks,
+//         ROUND(AVG(CASE WHEN t.status = 'completed' THEN 
+//           EXTRACT(EPOCH FROM (t.updated_at - t.created_at))/3600/24 
+//         ELSE NULL END), 2) AS avg_completion_days
+//       FROM users u
+//       LEFT JOIN task_assignments ta ON u.id = ta.user_id
+//       LEFT JOIN tasks t ON ta.task_id = t.id
+//       WHERE 1=1
+//     `;
+    
+//     // Apply filters
+//     if (user_id) {
+//       queryParams.push(user_id);
+//       query += ` AND u.id = $${queryParams.length}`;
+//     }
+    
+//     if (start_date) {
+//       queryParams.push(start_date);
+//       query += ` AND (t.created_at >= $${queryParams.length}::date OR t.created_at IS NULL)`;
+//     }
+    
+//     if (end_date) {
+//       queryParams.push(end_date);
+//       query += ` AND (t.created_at <= $${queryParams.length}::date OR t.created_at IS NULL)`;
+//     }
+    
+//     // Group and order by
+//     query += ` 
+//       GROUP BY u.id, u.first_name, u.last_name
+//       ORDER BY u.first_name, u.last_name
+//     `;
+    
+//     // Execute query
+//     const result = await db.query(query, queryParams);
+    
+//     // Add daily updates for more detailed performance metrics
+//     for (const user of result.rows) {
+//       if (user.user_id) {
+//         // Build query params for daily updates
+//         const updateQueryParams = [user.user_id];
+        
+//         let updatesQuery = `
+//           SELECT 
+//             DATE(update_date) AS date,
+//             SUM(hours_spent) AS hours,
+//             COUNT(DISTINCT task_id) AS tasks_worked_on
+//           FROM daily_updates
+//           WHERE user_id = $1
+//         `;
+        
+//         if (start_date) {
+//           updateQueryParams.push(start_date);
+//           updatesQuery += ` AND update_date >= $${updateQueryParams.length}::date`;
+//         }
+        
+//         if (end_date) {
+//           updateQueryParams.push(end_date);
+//           updatesQuery += ` AND update_date <= $${updateQueryParams.length}::date`;
+//         }
+        
+//         updatesQuery += ` 
+//           GROUP BY DATE(update_date)
+//           ORDER BY DATE(update_date)
+//         `;
+        
+//         const updatesResult = await db.query(updatesQuery, updateQueryParams);
+//         user.daily_updates = updatesResult.rows;
+        
+//         // Calculate additional metrics
+//         user.total_hours = updatesResult.rows.reduce((sum, day) => sum + parseFloat(day.hours || 0), 0);
+//         user.avg_daily_hours = user.total_hours / Math.max(updatesResult.rows.length, 1);
+//       }
+//     }
+    
+//     // Log this report access
+//     await logUserAction(
+//       req.user.id, 
+//       'Generated user performance report', 
+//       `Generated user performance report with filters: ${JSON.stringify(req.query)}`
+//     );
+    
+//     res.status(200).json({
+//       success: true,
+//       data: result.rows,
+//       filters: req.query
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 export const getUserPerformanceReport = async (req, res, next) => {
   try {
-    const { 
-      user_id,
-      start_date,
-      end_date
-    } = req.query;
-    
-    // For vendor users, they can only see their consultants' performance
+    const { user_id, start_date, end_date } = req.query;
+
+    // For vendor users, restrict to their consultants
     if (req.user.role === 'vendor') {
-      const vendorId = await    getVendorIdByUserId(req.user.id);
-      
+      const vendorId = await getVendorIdByUserId(req.user.id);
       if (!vendorId) {
         return res.status(403).json({
           success: false,
           message: 'You do not have permission to access this report'
         });
       }
-      
       if (user_id) {
-        // Check if this consultant belongs to the vendor
-        const isFromVendor = await    isConsultantFromVendor(vendorId, user_id);
-        
+        // Check vendor ownership of consultant
+        const isFromVendor = await isConsultantFromVendor(vendorId, user_id);
         if (!isFromVendor) {
           return res.status(403).json({
             success: false,
@@ -161,107 +295,70 @@ export const getUserPerformanceReport = async (req, res, next) => {
         }
       }
     }
-    
-    // Required user_id filter for non-admin users
+
+    // Require user_id filter for non-admin users
     if (!user_id && req.user.role !== 'admin') {
       return res.status(400).json({
         success: false,
         message: 'User ID filter is required'
       });
     }
-    
-    // Initialize query parameters array
+
+    // Build the query
     const queryParams = [];
-    
-    // Build base query for user performance
     let query = `
       SELECT 
         u.id AS user_id,
         u.first_name || ' ' || u.last_name AS user_name,
-        COUNT(t.id) AS total_tasks,
-        SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
-        SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_tasks,
-        SUM(CASE WHEN t.due_date < CURRENT_DATE AND t.status != 'completed' THEN 1 ELSE 0 END) AS overdue_tasks,
-        ROUND(AVG(CASE WHEN t.status = 'completed' THEN 
-          EXTRACT(EPOCH FROM (t.updated_at - t.created_at))/3600/24 
-        ELSE NULL END), 2) AS avg_completion_days
+        p.id AS project_id,
+        p.title AS project_name,
+        t.id AS task_id,
+        t.title AS task_name,
+        t.created_at AS assigned_on,
+        CASE WHEN t.status = 'completed' THEN t.updated_at ELSE NULL END AS completion_by,
+        t.status
       FROM users u
       LEFT JOIN task_assignments ta ON u.id = ta.user_id
       LEFT JOIN tasks t ON ta.task_id = t.id
+      LEFT JOIN projects p ON t.project_id = p.id
       WHERE 1=1
     `;
-    
-    // Apply filters
+
     if (user_id) {
       queryParams.push(user_id);
       query += ` AND u.id = $${queryParams.length}`;
+    } else if (req.user.role === 'vendor') {
+      const vendorId = await getVendorIdByUserId(req.user.id);
+      const consultantIds = await getVendorConsultantIds(vendorId);
+      if (consultantIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          data: [],
+          filters: req.query
+        });
+      }
+      queryParams.push(consultantIds);
+      query += ` AND u.id = ANY($${queryParams.length})`;
     }
-    
+
     if (start_date) {
       queryParams.push(start_date);
       query += ` AND (t.created_at >= $${queryParams.length}::date OR t.created_at IS NULL)`;
     }
-    
+
     if (end_date) {
       queryParams.push(end_date);
       query += ` AND (t.created_at <= $${queryParams.length}::date OR t.created_at IS NULL)`;
     }
-    
-    // Group and order by
-    query += ` 
-      GROUP BY u.id, u.first_name, u.last_name
-      ORDER BY u.first_name, u.last_name
-    `;
-    
+
+    query += ` ORDER BY u.first_name, u.last_name, p.title, t.due_date`;
+
     // Execute query
     const result = await db.query(query, queryParams);
-    
-    // Add daily updates for more detailed performance metrics
-    for (const user of result.rows) {
-      if (user.user_id) {
-        // Build query params for daily updates
-        const updateQueryParams = [user.user_id];
-        
-        let updatesQuery = `
-          SELECT 
-            DATE(update_date) AS date,
-            SUM(hours_spent) AS hours,
-            COUNT(DISTINCT task_id) AS tasks_worked_on
-          FROM daily_updates
-          WHERE user_id = $1
-        `;
-        
-        if (start_date) {
-          updateQueryParams.push(start_date);
-          updatesQuery += ` AND update_date >= $${updateQueryParams.length}::date`;
-        }
-        
-        if (end_date) {
-          updateQueryParams.push(end_date);
-          updatesQuery += ` AND update_date <= $${updateQueryParams.length}::date`;
-        }
-        
-        updatesQuery += ` 
-          GROUP BY DATE(update_date)
-          ORDER BY DATE(update_date)
-        `;
-        
-        const updatesResult = await db.query(updatesQuery, updateQueryParams);
-        user.daily_updates = updatesResult.rows;
-        
-        // Calculate additional metrics
-        user.total_hours = updatesResult.rows.reduce((sum, day) => sum + parseFloat(day.hours || 0), 0);
-        user.avg_daily_hours = user.total_hours / Math.max(updatesResult.rows.length, 1);
-      }
-    }
-    
-    // Log this report access
-    await logUserAction(
-      req.user.id, 
-      'Generated user performance report', 
-      `Generated user performance report with filters: ${JSON.stringify(req.query)}`
-    );
-    
+
+    // Log report generation
+    await logUserAction(req.user.id, 'Generated user performance report', `Filters: ${JSON.stringify(req.query)}`);
+
     res.status(200).json({
       success: true,
       data: result.rows,

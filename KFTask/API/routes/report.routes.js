@@ -60,7 +60,6 @@ import { authenticateToken, authorize } from '../middleware/auth.middleware.js'
  *         description: Server error
  */
 router.get('/tasks', authenticateToken, getTaskReport);
-
 /**
  * @swagger
  * /api/reports/user-performance:
@@ -76,20 +75,85 @@ router.get('/tasks', authenticateToken, getTaskReport);
  *           type: integer
  *         description: Filter by user ID
  *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by project ID
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, in_progress, completed, overdue, cancelled]
+ *         description: Filter by task status
+ *       - in: query
  *         name: start_date
  *         schema:
  *           type: string
  *           format: date
- *         description: Filter by start date
+ *         description: Filter by start date (YYYY-MM-DD)
  *       - in: query
  *         name: end_date
  *         schema:
  *           type: string
  *           format: date
- *         description: Filter by end date
+ *         description: Filter by end date (YYYY-MM-DD)
  *     responses:
  *       200:
  *         description: User performance report retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       user_id:
+ *                         type: integer
+ *                       user_name:
+ *                         type: string
+ *                       total_tasks:
+ *                         type: string
+ *                       completed_tasks:
+ *                         type: string
+ *                       in_progress_tasks:
+ *                         type: string
+ *                       overdue_tasks:
+ *                         type: string
+ *                       avg_completion_days:
+ *                         type: number
+ *                         nullable: true
+ *                       daily_updates:
+ *                         type: array
+ *                       total_hours:
+ *                         type: number
+ *                       avg_daily_hours:
+ *                         type: number
+ *                 filters:
+ *                   type: object
+ *                   properties:
+ *                     user_id:
+ *                       type: integer
+ *                       nullable: true
+ *                     project_id:
+ *                       type: integer
+ *                       nullable: true
+ *                     status:
+ *                       type: string
+ *                       nullable: true
+ *                     start_date:
+ *                       type: string
+ *                       nullable: true
+ *                     end_date:
+ *                       type: string
+ *                       nullable: true
+ *       400:
+ *         description: Bad request - Invalid filter parameters
  *       401:
  *         description: Unauthorized
  *       500:

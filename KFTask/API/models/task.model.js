@@ -45,7 +45,42 @@ const TaskModel = {
     const { rows } = await db.query(query, values);
     return rows[0];
   },
-
+/**
+ * Find all tasks where user is assignee or creator (no filters)
+ * @param {number} userId - User ID
+ * @returns {Promise<Array>} - Array of tasks
+ */
+async findAllByUser(userId) {
+  const query = `
+    SELECT t.*,
+      p.title as project_title,
+      a.first_name || ' ' || a.last_name as assignee_name,
+      c.first_name || ' ' || c.last_name as creator_name
+    FROM tasks t
+    LEFT JOIN projects p ON t.project_id = p.id
+    LEFT JOIN users a ON t.assignee_id = a.id
+    LEFT JOIN users c ON t.created_by = c.id
+    WHERE t.created_by = $1 OR t.assignee_id = $1
+    ORDER BY t.due_date ASC
+  `;
+  const { rows } = await db.query(query, [userId]);
+  return rows;
+}
+,
+/**
+ * Get all task IDs and titles
+ * @returns {Promise<Array>} - Array of objects with id and title
+ */
+async getAllTaskIdsAndTitles() {
+  const query = `
+    SELECT id, title
+    FROM tasks
+    ORDER BY id ASC
+  `;
+  const { rows } = await db.query(query);
+  return rows;
+}
+,
   /**
    * Find task by ID
    * @param {number} id - Task ID

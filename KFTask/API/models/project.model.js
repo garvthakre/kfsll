@@ -49,7 +49,20 @@ const ProjectModel = {
     const { rows } = await db.query(query, values);
     return rows[0];
   },
-
+/**
+ * Get all projects with only id and title (name), no filters or pagination
+ * @returns {Promise<Array>} - Array of projects with id and title
+ */
+async getAllProjectIdsAndTitles() {
+  const query = `
+    SELECT id, title
+    FROM projects
+    ORDER BY id ASC
+  `;
+  const { rows } = await db.query(query);
+  return rows;
+}
+,
   /**
    * Get a project by ID
    * @param {number} id - Project ID

@@ -238,6 +238,65 @@ const router = express.Router();
  *         description: Server error
  */
 router.get('/stats', authenticateToken, TaskController.getTaskStats);
+/**
+ * @swagger
+ * /api/tasks/my:
+ *   get:
+ *     summary: Get all tasks assigned to or created by the  user
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All tasks for the authenticated user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Task'
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/my', authenticateToken, TaskController.getMyTasks);
+/**
+ * @swagger
+ * /api/tasks/ids-titles:
+ *   get:
+ *     summary: Get all tasks (ID and title only)
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of task IDs and titles
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: Task ID
+ *                       title:
+ *                         type: string
+ *                         description: Task title
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/ids-titles', authenticateToken, TaskController.getAllTaskIdsAndTitles);
 
 /**
  * @swagger

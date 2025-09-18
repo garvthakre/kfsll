@@ -83,7 +83,7 @@ async create(userData) {
 async findById(id) {
   const query = `
     SELECT id, first_name, last_name, email, role, department, 
-    position, status, profile_image, designation, type, working_type, working_for, created_at, updated_at
+    position, status, profile_image, designation, type, working_type, working_for,phone_no,email, created_at, updated_at
     FROM users WHERE id = $1
   `;
   const { rows } = await db.query(query, [id]);
@@ -99,7 +99,7 @@ async findById(id) {
 async findAll(limit = 10, offset = 0) {
   const query = `
     SELECT id, first_name, last_name, email, role, department, 
-    position, status, designation, type, working_type, working_for, created_at, updated_at
+    position, status, designation, type, working_type, working_for,phone_no, created_at, updated_at
     FROM users
     ORDER BY created_at DESC
     LIMIT $1 OFFSET $2
@@ -108,7 +108,38 @@ async findAll(limit = 10, offset = 0) {
   const { rows } = await db.query(query, [limit, offset]);
   return rows;
 },
+/**
+ * Get all users' IDs and names with roles either 'employee' or 'consultant'
+ * @returns {Promise<Array>} - Array of objects with id and name
+ */
+async getAllUserIdsAndNamesforuser() {
+  const query = `
+    SELECT id, first_name || ' ' || last_name AS name
+    FROM users
+    WHERE role IN ('employee', 'consultant')
+    ORDER BY id ASC
+  `;
+  const { rows } = await db.query(query);
+  return rows;
+}
 
+,
+// /**
+//  * Get all users' IDs and names with roles either 'employee' or 'consultant'
+//  * @returns {Promise<Array>} - Array of objects with id and name
+//  */
+// async getAllUserIdsAndNamesforvendor() {
+//   const query = `
+//     SELECT id, first_name || ' ' || last_name AS name
+//     FROM users
+//     WHERE role IN ('vendor', 'admin','manager')
+//     ORDER BY id ASC
+//   `;
+//   const { rows } = await db.query(query);
+//   return rows;
+// }
+
+// ,
   /**
    * Update user information
    * @param {number} id - User ID
@@ -126,7 +157,8 @@ async update(id, userData) {
     designation,
     type,
     working_type,
-    working_for
+    working_for,
+    phone_no
   } = userData;
 
   const query = `
@@ -142,12 +174,14 @@ async update(id, userData) {
       type = COALESCE($8, type),
       working_type = COALESCE($9, working_type),
       working_for = COALESCE($10, working_for),
+      phone_no = COALESCE($11, phone_no),
+      email = COALESCE($12, email),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $11
-    RETURNING id, first_name, last_name, email, role, department, position, status, designation, type, working_type, working_for, created_at, updated_at
+    WHERE id = $13
+    RETURNING id, first_name, last_name, email, role, department, position, status, designation, type, working_type, working_for,phone_no, created_at, updated_at
   `;
 
-  const values = [first_name, last_name, department, position, status, profile_image, designation, type, working_type, working_for, id];
+  const values = [first_name, last_name, department, position, status, profile_image, designation, type, working_type, working_for,phone_no,email, id];
   
   const { rows } = await db.query(query, values);
   return rows[0];

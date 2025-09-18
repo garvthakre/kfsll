@@ -72,7 +72,37 @@ const TaskController = {
       return res.status(500).json({ message: 'Server error while fetching tasks' });
     }
   },
-
+  /**
+ * Get all tasks assigned to or created by the current user (no filters, no pagination)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+async getMyTasks(req, res) {
+  try {
+    const userId = req.user.id;
+    const tasks = await TaskModel.findAllByUser(userId);
+    return res.status(200).json({ tasks });
+  } catch (error) {
+    console.error('Get my tasks error:', error);
+    return res.status(500).json({ message: 'Server error while fetching my tasks' });
+  }
+}
+,
+/**
+ * Get all tasks (id and title only)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+async getAllTaskIdsAndTitles(req, res) {
+  try {
+    const tasks = await TaskModel.getAllTaskIdsAndTitles();
+    return res.status(200).json({ tasks });
+  } catch (error) {
+    console.error('Get all task IDs and titles error:', error);
+    return res.status(500).json({ message: 'Server error while fetching tasks' });
+  }
+}
+,
   /**
    * Get task by ID
    * @param {Object} req - Express request object
