@@ -179,55 +179,93 @@ async getAllProjectIdsAndTitles(req, res) {
     }
   },
 
-  /**
-   * Update a project
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @returns {Object} - Updated project details
-   */
-  async updateProject(req, res) {
+/**
+ * Update a project (Simplified version - similar to create)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - Updated project details
+ */
+async updateProject(req, res) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const projectId = parseInt(req.params.id);
+
+    // Check if project exists
+    const existingProject = await ProjectModel.findById(projectId);
+    if (!existingProject) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+    // Check permission: only admin or manager
+    if (req.user.role !== 'admin' && existingProject.manager_id !== req.user.id) {
+      return res.status(403).json({ message: 'You do not have permission to update this project' });
+    }
+
+    const {
+      title,
+      description,
+      client_id,
+      start_date,
+      end_date,
+      status,
+      budget,
+      manager_id,
+      department,
+      priority,
+      project_type
+    } = req.body;
+
+    // Use a transaction
+    const client = await db.pool.connect();
     try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
+      await client.query('BEGIN');
 
-      const projectId = parseInt(req.params.id);
-      
-      // Check if project exists
-      const existingProject = await ProjectModel.findById(projectId);
-      if (!existingProject) {
-        return res.status(404).json({ message: 'Project not found' });
-      }
-
-      // Check if user has permission to update the project
-      if (
-        req.user.role !== 'admin' && 
-        existingProject.manager_id !== req.user.id
-      ) {
-        return res.status(403).json({
-          message: 'You do not have permission to update this project'
-        });
-      }
-
-      // Update project
-      const updatedProject = await ProjectModel.update(projectId, req.body);
+      // Update project with direct values (no COALESCE)
+      const updatedProject = await ProjectModel.update(projectId, {
+        title,
+        description,
+        client_id,
+        start_date,
+        end_date,
+        status,
+        budget,
+        manager_id,
+        department,
+        priority,
+        project_type
+      });
 
       // Log project update
-      await db.query(
+      await client.query(
         'INSERT INTO project_logs (project_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
         [projectId, req.user.id, 'update', `Project "${updatedProject.title}" updated`]
       );
 
+      await client.query('COMMIT');
+
+      // Get updated project with all details
+      const project = await ProjectModel.findById(projectId);
+
       return res.status(200).json({
         message: 'Project updated successfully',
-        project: updatedProject
+        project
       });
-    } catch (error) {
-      console.error('Update project error:', error);
-      return res.status(500).json({ message: 'Server error while updating project' });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
-  },
+  } catch (error) {
+    console.error('Update project error:', error);
+    return res.status(500).json({ message: 'Server error while updating project' });
+  }
+}
+,
 
   /**
    * Delete a project

@@ -14,7 +14,9 @@ import {
   getVendorConsultants,
   getVendorProjects,
   getVendorTasks,
-  assignTaskToConsultant
+  assignTaskToConsultant,
+  getAllVendorIdsAndNames,
+  getMyConsultants
 }from '../controllers/vendor.controller.js';
 import { authenticateToken, authorize } from '../middleware/auth.middleware.js';
 
@@ -24,6 +26,58 @@ import { authenticateToken, authorize } from '../middleware/auth.middleware.js';
  *   name: Vendors
  *   description: Vendor management endpoints
  */
+/**
+ * @swagger
+ * /api/vendors/ids-names:
+ *   get:
+ *     summary: Get all vendors with ID and company name only
+ *     tags: [Vendors]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of vendor IDs and names
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 vendors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: Vendor ID
+ *                       name:
+ *                         type: string
+ *                         description: Vendor company name
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
+ */
+router.get('/ids-names', authenticateToken, authorize(['admin', 'vendor']), getAllVendorIdsAndNames);
+/**
+ * @swagger
+ * /api/vendors/my-consultants:
+ *   get:
+ *     summary: Get consultants for logged-in vendor user
+ *     tags: [Vendors]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of consultants retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Vendor profile not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/my-consultants', authenticateToken, authorize(['vendor', 'admin']), getMyConsultants);
 
 /**
  * @swagger

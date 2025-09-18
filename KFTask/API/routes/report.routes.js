@@ -1,7 +1,3 @@
-// const express = require('express');
-// const router = express.Router();
-// const  = require('../controllers/report.controller');
-// const { authenticate, authorize } = require('../middlewares/auth.middleware');
 import express from 'express';
 const router = express.Router();
 
@@ -19,7 +15,7 @@ import { authenticateToken, authorize } from '../middleware/auth.middleware.js'
  * @swagger
  * /api/reports/tasks:
  *   get:
- *     summary: Get task report
+ *     summary: Get task report  
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
@@ -51,20 +47,64 @@ import { authenticateToken, authorize } from '../middleware/auth.middleware.js'
  *           type: string
  *           format: date
  *         description: Filter by end date
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of items per page
  *     responses:
  *       200:
  *         description: Task report retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     current_page:
+ *                       type: integer
+ *                     total_pages:
+ *                       type: integer
+ *                     total_items:
+ *                       type: integer
+ *                     items_per_page:
+ *                       type: integer
+ *                     has_next:
+ *                       type: boolean
+ *                     has_previous:
+ *                       type: boolean
+ *                 filters:
+ *                   type: object
  *       401:
  *         description: Unauthorized
  *       500:
  *         description: Server error
  */
 router.get('/tasks', authenticateToken, getTaskReport);
+
 /**
  * @swagger
  * /api/reports/user-performance:
  *   get:
- *     summary: Get user performance report
+ *     summary: Get user performance report  
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
@@ -97,6 +137,21 @@ router.get('/tasks', authenticateToken, getTaskReport);
  *           type: string
  *           format: date
  *         description: Filter by end date (YYYY-MM-DD)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of items per page
  *     responses:
  *       200:
  *         description: User performance report retrieved successfully
@@ -134,6 +189,21 @@ router.get('/tasks', authenticateToken, getTaskReport);
  *                         type: number
  *                       avg_daily_hours:
  *                         type: number
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     current_page:
+ *                       type: integer
+ *                     total_pages:
+ *                       type: integer
+ *                     total_items:
+ *                       type: integer
+ *                     items_per_page:
+ *                       type: integer
+ *                     has_next:
+ *                       type: boolean
+ *                     has_previous:
+ *                       type: boolean
  *                 filters:
  *                   type: object
  *                   properties:
@@ -165,7 +235,7 @@ router.get('/user-performance', authenticateToken, authorize(['admin', 'manager'
  * @swagger
  * /api/reports/project-status:
  *   get:
- *     summary: Get project status report
+ *     summary: Get project status report 
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
@@ -175,9 +245,24 @@ router.get('/user-performance', authenticateToken, authorize(['admin', 'manager'
  *         schema:
  *           type: integer
  *         description: Filter by project ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of items per page
  *     responses:
  *       200:
- *         description: Project status report retrieved successfully
+ *         description: Project status report retrieved successfully with pagination
  *       401:
  *         description: Unauthorized
  *       500:
@@ -189,7 +274,7 @@ router.get('/project-status', authenticateToken, getProjectStatusReport);
  * @swagger
  * /api/reports/vendor-performance:
  *   get:
- *     summary: Get vendor performance report with filtering
+ *     summary: Get vendor performance report with filtering and pagination
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
@@ -222,6 +307,21 @@ router.get('/project-status', authenticateToken, getProjectStatusReport);
  *           type: string
  *         description: Filter by task status (comma-separated for multiple statuses, e.g., "completed,in_progress")
  *         example: "completed,in_progress,pending"
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of items per page
  *     responses:
  *       200:
  *         description: Vendor performance report retrieved successfully
@@ -288,6 +388,21 @@ router.get('/project-status', authenticateToken, getProjectStatusReport);
  *                               type: number
  *                             avg_completion_days:
  *                               type: number
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     current_page:
+ *                       type: integer
+ *                     total_pages:
+ *                       type: integer
+ *                     total_items:
+ *                       type: integer
+ *                     items_per_page:
+ *                       type: integer
+ *                     has_next:
+ *                       type: boolean
+ *                     has_previous:
+ *                       type: boolean
  *                 summary:
  *                   type: object
  *                   properties:
@@ -358,7 +473,7 @@ router.post('/export', authenticateToken, exportReport);
  * @swagger
  * /api/reports/user-logs:
  *   get:
- *     summary: Get user activity logs report
+ *     summary: Get user activity logs report 
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
@@ -385,9 +500,24 @@ router.post('/export', authenticateToken, exportReport);
  *         schema:
  *           type: string
  *         description: Filter by action type
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of items per page
  *     responses:
  *       200:
- *         description: User logs retrieved successfully
+ *         description: User logs retrieved successfully with pagination
  *       401:
  *         description: Unauthorized
  *       403:

@@ -211,7 +211,7 @@ const router = express.Router();
  *                 overdue:
  *                   type: integer
  */
-
+ 
 /**
  * @swagger
  * /api/users/dashboard/overview:
@@ -292,7 +292,7 @@ router.get('/dashboard/overview', authenticateToken, UserController.getDashboard
 router.get('/', authenticateToken, UserController.getAllUsers);
 /**
  * @swagger
- * /api/users/user:
+ * /api/users/id-names:
  *   get:
  *     summary: Get all users (ID and name only)
  *     tags: [Users]
@@ -322,40 +322,40 @@ router.get('/', authenticateToken, UserController.getAllUsers);
  *       500:
  *         description: Server error
  */
-router.get('/ids-names', authenticateToken, UserController.getAllUserIdsAndNamesforuser);
-// /**
-//  * @swagger
-//  * /api/users/admin:
-//  *   get:
-//  *     summary: Get all users (ID and name only)
-//  *     tags: [Users]
-//  *     security:
-//  *       - bearerAuth: []
-//  *     responses:
-//  *       200:
-//  *         description: List of user IDs and names
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               type: object
-//  *               properties:
-//  *                 users:
-//  *                   type: array
-//  *                   items:
-//  *                     type: object
-//  *                     properties:
-//  *                       id:
-//  *                         type: integer
-//  *                         description: User ID
-//  *                       name:
-//  *                         type: string
-//  *                         description: User full name
-//  *       401:
-//  *         description: Not authenticated
-//  *       500:
-//  *         description: Server error
-//  */
-// router.get('/id-admin', authenticateToken, UserController.getAllUserIdsAndNamesforvendor);
+router.get('/id-names', authenticateToken, UserController.getAllUserIdsAndNamesforuse);
+/**
+ * @swagger
+ * /api/users/id-admin:
+ *   get:
+ *     summary: Get all users (ID and name only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user IDs and names
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: User ID
+ *                       name:
+ *                         type: string
+ *                         description: User full name
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/id-admin', authenticateToken, UserController.getAllUserIdsAndNamesforvendor);
  /**
  * @swagger
  * /api/users/roles:

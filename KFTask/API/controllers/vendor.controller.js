@@ -51,6 +51,74 @@ export const getAllVendors = async (req, res, next) => {
     next(error);
   }
 };
+/**
+ * Get all vendors' IDs and company names (no pagination, no filters)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+export const getAllVendorIdsAndNames = async (req, res, next) => {
+  try {
+    const result = await db.query(`
+      SELECT id, company_name AS name
+      FROM vendors
+      ORDER BY id ASC
+    `);
+
+    res.status(200).json({
+      success: true,
+      vendors: result.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+/**
+ * Get consultants working for the current vendor user
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
+export const getMyConsultants = async (req, res, next) => {
+  try {
+    const vendorUserId = req.user.id;
+
+    // Verify vendor exists for the logged-in user
+    const vendor = await db.query(
+      'SELECT * FROM users WHERE id = $1',
+      [vendorUserId]
+    );
+
+    if (vendor.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found for the logged-in user'
+      });
+    }
+
+    // Same permission logic (skip since user is self)
+    // For admin or vendor accessing own consultants
+
+    // Fetch consultants working for this vendor
+    const consultants = await db.query(
+      `SELECT u.id, u.first_name, u.last_name, u.email, u.status, u.department, u.position, u.designation, u.type, u.working_type
+       FROM users u
+       WHERE u.role = 'consultant' AND u.working_for = $1
+       ORDER BY u.first_name, u.last_name`,
+      [vendorUserId]
+    );
+
+    res.status(200).json({
+      success: true,
+      data: consultants.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 /**
  * Get vendor by ID

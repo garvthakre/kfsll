@@ -39,7 +39,7 @@ const UserController = {
       return res.status(500).json({ message: 'Server error while fetching users' });
     }
   },
-async getAllUserIdsAndNamesforuser(req, res) {
+async getAllUserIdsAndNamesforuse(req, res) {
   try {
     const users = await UserModel.getAllUserIdsAndNamesforuser();
     return res.status(200).json({ users });
@@ -49,38 +49,51 @@ async getAllUserIdsAndNamesforuser(req, res) {
   }
 }
 ,
-// async getAllUserIdsAndNamesforvendor(req, res) {
-//   try {
-//     const users = await UserModel.getAllUserIdsAndNamesforvendor();
-//     return res.status(200).json({ users });
-//   } catch (error) {
-//     console.error('Get all user IDs and names error:', error);
-//     return res.status(500).json({ message: 'Server error while fetching users' });
-//   }
-// }
-// ,
+async getAllUserIdsAndNamesforvendor(req, res) {
+  try {
+    const users = await UserModel.getAllUserIdsAndNamesforvendor();
+    return res.status(200).json({ first_user: users[0] || null,users });
+  } catch (error) {
+    console.error('Get all user IDs and names error:', error);
+    return res.status(500).json({ message: 'Server error while fetching users' });
+  }
+}
+,
   /**
    * Get user by ID
    * @param {Object} req - Express request object
    * @param {Object} res - Express response object
    * @returns {Object} - User details
    */
-  async getUserById(req, res) {
-    try {
-      const userId = parseInt(req.params.id);
-      
-      const user = await UserModel.findById(userId);
-      
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      return res.status(200).json({ user });
-    } catch (error) {
-      console.error('Get user by ID error:', error);
-      return res.status(500).json({ message: 'Server error while fetching user' });
+/**
+ * Get user by ID
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - User details
+ */
+async getUserById(req, res) {
+  try {
+    const userId = parseInt(req.params.id);
+    
+    // Add validation to check if userId is a valid number
+    if (isNaN(userId) || userId <= 0) {
+      return res.status(400).json({ 
+        message: 'Invalid user ID. Please provide a valid numeric ID.' 
+      });
     }
-  },
+    
+    const user = await UserModel.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    return res.status(200).json({ user });
+  } catch (error) {
+    console.error('Get user by ID error:', error);
+    return res.status(500).json({ message: 'Server error while fetching user' });
+  }
+},
 
  
 

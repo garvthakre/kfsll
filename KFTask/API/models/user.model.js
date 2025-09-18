@@ -83,7 +83,7 @@ async create(userData) {
 async findById(id) {
   const query = `
     SELECT id, first_name, last_name, email, role, department, 
-    position, status, profile_image, designation, type, working_type, working_for,phone_no,email, created_at, updated_at
+    position, status, profile_image, designation, type, working_type, working_for,phone_no, created_at, updated_at
     FROM users WHERE id = $1
   `;
   const { rows } = await db.query(query, [id]);
@@ -112,6 +112,10 @@ async findAll(limit = 10, offset = 0) {
  * Get all users' IDs and names with roles either 'employee' or 'consultant'
  * @returns {Promise<Array>} - Array of objects with id and name
  */
+/**
+ * Get all users' IDs and names with roles either 'employee' or 'consultant'
+ * @returns {Promise<Array>} - Array of objects with id and name
+ */
 async getAllUserIdsAndNamesforuser() {
   const query = `
     SELECT id, first_name || ' ' || last_name AS name
@@ -123,23 +127,24 @@ async getAllUserIdsAndNamesforuser() {
   return rows;
 }
 
-,
-// /**
-//  * Get all users' IDs and names with roles either 'employee' or 'consultant'
-//  * @returns {Promise<Array>} - Array of objects with id and name
-//  */
-// async getAllUserIdsAndNamesforvendor() {
-//   const query = `
-//     SELECT id, first_name || ' ' || last_name AS name
-//     FROM users
-//     WHERE role IN ('vendor', 'admin','manager')
-//     ORDER BY id ASC
-//   `;
-//   const { rows } = await db.query(query);
-//   return rows;
-// }
 
-// ,
+,
+/**
+ * Get all users' IDs and names with roles either 'employee' or 'consultant'
+ * @returns {Promise<Array>} - Array of objects with id and name
+ */
+async getAllUserIdsAndNamesforvendor() {
+  const query = `
+    SELECT id, first_name || ' ' || last_name AS name,role
+    FROM users
+    WHERE role IN ('vendor', 'admin')
+    ORDER BY id ASC
+  `;
+  const { rows } = await db.query(query);
+  return rows;
+}
+
+,
   /**
    * Update user information
    * @param {number} id - User ID

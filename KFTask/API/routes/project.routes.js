@@ -810,7 +810,7 @@ router.post('/', [
  * /api/projects/{id}:
  *   put:
  *     summary: Update a project
- *     description: Update project information. Only project manager or admin can update the project.
+ *     description: Update project information with the same required fields as create
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -828,29 +828,17 @@ router.post('/', [
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateProjectRequest'
+ *             $ref: '#/components/schemas/CreateProjectRequest'
  *           examples:
- *             update_status:
- *               summary: Update Project Status
- *               description: Update project status and priority
+ 
+ 
  *               value:
- *                 status: "in_progress"
- *                 priority: "high"
- *             update_details:
- *               summary: Update Project Details
- *               description: Update project information
- *               value:
- *                 title: "Enhanced E-commerce Platform"
- *                 description: "Updated description with new requirements"
- *                 budget: 60000.00
+ *                 title: "E-commerce Website"
+ *                 start_date: "2024-01-15"
+ *                 end_date: "2024-06-15"
  *                 project_type: "web_development"
- *                 end_date: "2024-07-15"
- *             change_type:
- *               summary: Change Project Type
- *               description: Change project type from web to mobile
- *               value:
- *                 project_type: "mobile_app"
- *                 department: "Mobile Development"
+ *                 status: "planning"
+ 
  *     responses:
  *       200:
  *         description: Project updated successfully
@@ -880,6 +868,12 @@ router.post('/', [
  *                         type: string
  *                       message:
  *                         type: string
+ *             example:
+ *               errors:
+ *                 - field: "title"
+ *                   message: "Title is required"
+ *                 - field: "start_date"
+ *                   message: "Start date is required"
  *       401:
  *         description: Not authenticated
  *         content:
@@ -910,47 +904,57 @@ router.post('/', [
 router.put('/:id', [
   authenticateToken,
   check('title')
-    .optional()
+   .optional()
     .notEmpty()
-    .withMessage('Title cannot be empty if provided')
+    .withMessage('Title is required')
     .isLength({ min: 1, max: 255 })
     .withMessage('Title must be between 1 and 255 characters'),
   check('client_id')
-    .optional()
+    .optional({ nullable: true })
     .isInt({ min: 1 })
     .withMessage('Client ID must be a positive integer'),
   check('project_type')
-    .optional()
+   .optional()
+    .notEmpty()
+    .withMessage('Project type is required')
     .isString()
     .withMessage('Project type must be a string')
     .isLength({ max: 100 })
     .withMessage('Project type must not exceed 100 characters'),
   check('budget')
-    .optional()
+    .optional({ nullable: true })
     .isFloat({ min: 0 })
     .withMessage('Budget must be a positive number'),
   check('start_date')
-    .optional()
+   .optional()
+    .notEmpty()
+    .withMessage('Start date is required')
     .isISO8601()
     .withMessage('Start date must be a valid date'),
   check('end_date')
-    .optional()
+   .optional()
+    .notEmpty()
+    .withMessage('End date is required')
     .isISO8601()
     .withMessage('End date must be a valid date'),
   check('status')
-    .optional()
+   .optional()
+    .notEmpty()
+    .withMessage('Status is required')
     .isIn(['planning', 'in_progress', 'on_hold', 'completed', 'cancelled'])
     .withMessage('Status must be one of: planning, in_progress, on_hold, completed, cancelled'),
   check('priority')
-    .optional()
+   .optional()
+    .optional({ nullable: true })
     .isIn(['low', 'medium', 'high', 'urgent'])
     .withMessage('Priority must be one of: low, medium, high, urgent'),
   check('department')
-    .optional()
+  
+    .optional({ nullable: true })
     .isLength({ max: 100 })
     .withMessage('Department must not exceed 100 characters'),
   check('manager_id')
-    .optional()
+    .optional({ nullable: true })
     .isInt({ min: 1 })
     .withMessage('Manager ID must be a positive integer')
 ], ProjectController.updateProject);
