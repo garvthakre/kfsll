@@ -13,32 +13,32 @@ const TaskModel = {
   async create(taskData) {
     const {
       title,
-      description,
+     
       project_id,
       assignee_id,
-      
-      priority,
+      status,
+     
       due_date,
-      estimated_hours,
+     
       created_by
     } = taskData;
 
     const query = `
       INSERT INTO tasks 
-      (title, description, project_id, assignee_id,   priority, due_date, estimated_hours, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8 )
+      (title,  project_id, assignee_id,    due_date,status,  created_by)
+      VALUES ($1, $2, $3, $4 ,$5,$6 )
       RETURNING *
     `;
 
     const values = [
       title,
-      description,
+     
       project_id,
       assignee_id,
        
-      priority || 'medium',
+      
       due_date,
-      estimated_hours || 0,
+      status,
       created_by
     ];
 

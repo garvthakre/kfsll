@@ -75,24 +75,24 @@ export const getTaskReport = async (req, res, next) => {
       WHERE 1=1
     `;
     
-    // Apply filters to both queries
-    if (project_id) {
+    // Apply filters to both queries (skip if 0 or 'all')
+    if (project_id && project_id !== '0' && project_id !== 'all') {
       queryParams.push(project_id);
       const filterClause = ` AND t.project_id = $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
     
-    if (user_id) {
+    if (user_id && user_id !== '0' && user_id !== 'all') {
       queryParams.push(user_id);
       const filterClause = ` AND ta.user_id = $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
     
-    if (status) {
+    if (status && status !== 'all' && status !== '0') {
       queryParams.push(status);
-      const filterClause = ` AND t.status = $${queryParams.length}`;
+      const filterClause = ` AND t.status = ${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
@@ -213,7 +213,7 @@ export const getUserPerformanceReport = async (req, res, next) => {
           message: 'You do not have permission to access this report'
         });
       }
-      if (user_id) {
+      if (user_id && user_id !== '0' && user_id !== 'all') {
         // Check vendor ownership of consultant
         const isFromVendor = await isConsultantFromVendor(vendorId, user_id);
         if (!isFromVendor) {
@@ -225,8 +225,8 @@ export const getUserPerformanceReport = async (req, res, next) => {
       }
     }
 
-    // Require user_id filter for non-admin users
-    if (!user_id && req.user.role !== 'admin') {
+    // Require user_id filter for non-admin users (unless 'all' or '0')
+    if ((!user_id || user_id === '0' || user_id === 'all') && req.user.role !== 'admin') {
       return res.status(400).json({
         success: false,
         message: 'User ID filter is required'
@@ -264,8 +264,8 @@ export const getUserPerformanceReport = async (req, res, next) => {
       WHERE 1=1
     `;
 
-    // Apply filters
-    if (user_id) {
+    // Apply filters (skip if 0 or 'all')
+    if (user_id && user_id !== '0' && user_id !== 'all') {
       queryParams.push(user_id);
       const filterClause = ` AND u.id = $${queryParams.length}`;
       query += filterClause;
@@ -287,14 +287,14 @@ export const getUserPerformanceReport = async (req, res, next) => {
       countQuery += vendorFilterClause;
     }
 
-    if (project_id) {
+    if (project_id && project_id !== '0' && project_id !== 'all') {
       queryParams.push(project_id);
       const filterClause = ` AND t.project_id = $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
 
-    if (status) {
+    if (status && status !== 'all') {
       queryParams.push(status);
       const filterClause = ` AND t.status = $${queryParams.length}`;
       query += filterClause;
@@ -439,10 +439,10 @@ export const getProjectStatusReport = async (req, res, next) => {
       WHERE 1=1
     `;
     
-    // Apply project_id filter if provided
-    if (project_id) {
+    // Apply project_id filter if provided (skip if 0 or 'all')
+    if (project_id && project_id !== '0' && project_id !== 'all') {
       queryParams.push(project_id);
-      const filterClause = ` AND p.id = ${queryParams.length}`;
+      const filterClause = ` AND p.id = $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
@@ -475,7 +475,7 @@ export const getProjectStatusReport = async (req, res, next) => {
       
       // Filter projects by vendor
       queryParams.push(`%Vendor - ${companyName}%`);
-      const vendorFilterClause = ` AND p.project_type LIKE ${queryParams.length}`;
+      const vendorFilterClause = ` AND p.project_type LIKE $${queryParams.length}`;
       query += vendorFilterClause;
       countQuery += vendorFilterClause;
     }
@@ -491,7 +491,7 @@ export const getProjectStatusReport = async (req, res, next) => {
     `;
     
     queryParams.push(limitNum, offset);
-    query += ` LIMIT ${queryParams.length - 1} OFFSET ${queryParams.length}`;
+    query += ` LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
     
     // Execute query
     const result = await db.query(query, queryParams);
@@ -604,18 +604,18 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       WHERE 1=1
     `;
     
-    // Apply vendor filter
-    if (vendor_id) {
+    // Apply vendor filter (skip if 0 or 'all')
+    if (vendor_id && vendor_id !== '0' && vendor_id !== 'all') {
       queryParams.push(vendor_id);
-      const filterClause = ` AND v.id = ${queryParams.length}`;
+      const filterClause = ` AND v.id = $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
     
-    // Apply consultant filter
-    if (consultant_id) {
+    // Apply consultant filter (skip if 0 or 'all')
+    if (consultant_id && consultant_id !== '0' && consultant_id !== 'all') {
       queryParams.push(consultant_id);
-      const filterClause = ` AND c.id = ${queryParams.length}`;
+      const filterClause = ` AND c.id = $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
@@ -623,22 +623,22 @@ export const getVendorPerformanceReport = async (req, res, next) => {
     // Apply date filters
     if (start_date) {
       queryParams.push(start_date);
-      const filterClause = ` AND (t.created_at >= ${queryParams.length}::date OR t.created_at IS NULL)`;
+      const filterClause = ` AND (t.created_at >= $${queryParams.length}::date OR t.created_at IS NULL)`;
       query += filterClause;
       countQuery += filterClause;
     }
     
     if (end_date) {
       queryParams.push(end_date);
-      const filterClause = ` AND (t.created_at <= ${queryParams.length}::date OR t.created_at IS NULL)`;
+      const filterClause = ` AND (t.created_at <= $${queryParams.length}::date OR t.created_at IS NULL)`;
       query += filterClause;
       countQuery += filterClause;
     }
     
-    // Apply task status filter
-    if (task_status) {
+    // Apply task status filter (skip if 'all')
+    if (task_status && task_status !== 'all') {
       const statusArray = task_status.split(',').map(status => status.trim());
-      const statusPlaceholders = statusArray.map((_, index) => `${queryParams.length + index + 1}`).join(',');
+      const statusPlaceholders = statusArray.map((_, index) => `$${queryParams.length + index + 1}`).join(',');
       queryParams.push(...statusArray);
       const statusFilterClause = ` AND (t.status IN (${statusPlaceholders}) OR t.status IS NULL)`;
       query += statusFilterClause;
@@ -656,7 +656,7 @@ export const getVendorPerformanceReport = async (req, res, next) => {
     `;
     
     queryParams.push(limitNum, offset);
-    query += ` LIMIT ${queryParams.length - 1} OFFSET ${queryParams.length}`;
+    query += ` LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
     
     // Execute main query
     const result = await db.query(query, queryParams);
@@ -691,27 +691,27 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       
       const consultantsParams = [vendor.vendor_id];
       
-      // Apply consultant filter for individual consultant data
-      if (consultant_id) {
+      // Apply consultant filter for individual consultant data (skip if 0 or 'all')
+      if (consultant_id && consultant_id !== '0' && consultant_id !== 'all') {
         consultantsParams.push(consultant_id);
-        consultantsQuery += ` AND u.id = ${consultantsParams.length}`;
+        consultantsQuery += ` AND u.id = $${consultantsParams.length}`;
       }
       
       // Apply date filters
       if (start_date) {
         consultantsParams.push(start_date);
-        consultantsQuery += ` AND (t.created_at >= ${consultantsParams.length}::date OR t.created_at IS NULL)`;
+        consultantsQuery += ` AND (t.created_at >= $${consultantsParams.length}::date OR t.created_at IS NULL)`;
       }
       
       if (end_date) {
         consultantsParams.push(end_date);
-        consultantsQuery += ` AND (t.created_at <= ${consultantsParams.length}::date OR t.created_at IS NULL)`;
+        consultantsQuery += ` AND (t.created_at <= $${consultantsParams.length}::date OR t.created_at IS NULL)`;
       }
       
-      // Apply task status filter
-      if (task_status) {
+      // Apply task status filter (skip if 'all')
+      if (task_status && task_status !== 'all') {
         const statusArray = task_status.split(',').map(status => status.trim());
-        const statusPlaceholders = statusArray.map((_, index) => `${consultantsParams.length + index + 1}`).join(',');
+        const statusPlaceholders = statusArray.map((_, index) => `$${consultantsParams.length + index + 1}`).join(',');
         consultantsParams.push(...statusArray);
         consultantsQuery += ` AND (t.status IN (${statusPlaceholders}) OR t.status IS NULL)`;
       }
@@ -880,15 +880,15 @@ export const getUserLogsReport = async (req, res, next) => {
       WHERE 1=1
     `;
     
-    // Apply filters
-    if (user_id) {
+    // Apply filters (skip if 0 or 'all')
+    if (user_id && user_id !== '0' && user_id !== 'all') {
       queryParams.push(user_id);
       const filterClause = ` AND ul.user_id = ${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
     
-    if (action) {
+    if (action && action !== 'all') {
       queryParams.push(`%${action}%`);
       const filterClause = ` AND ul.action LIKE ${queryParams.length}`;
       query += filterClause;

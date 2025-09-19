@@ -141,33 +141,20 @@ const router = express.Router();
  *         title:
  *           type: string
  *           description: Task title
- *         description:
- *           type: string
- *           description: Task description
+ 
  *         project_id:
  *           type: integer
  *           description: Project ID
  *         assignee_id:
  *           type: integer
  *           description: User ID to assign the task to
- *         status:
- *           type: string
- *           enum: [to_do, in_progress, review, on_hold, completed, cancelled]
- *           default: to_do
- *           description: Task status
- *         priority:
- *           type: string
- *           enum: [low, medium, high, critical]
- *           default: medium
- *           description: Task priority
+ 
+ 
  *         due_date:
  *           type: string
  *           format: date
  *           description: Task due date
- *         estimated_hours:
- *           type: number
- *           format: float
- *           description: Estimated hours to complete task
+ 
  *     AddCommentRequest:
  *       type: object
  *       required:

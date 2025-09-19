@@ -149,40 +149,41 @@ async getAllTaskIdsAndTitles(req, res) {
 
       const {
         title,
-        description,
+        
         project_id,
         assignee_id,
-       
-        priority,
+       status,
+        
         due_date,
-        estimated_hours
+       
       } = req.body;
-
+       let taskStatus = 'in_progress';
       // Check if project exists
       if (project_id) {
         const project = await ProjectModel.findById(project_id);
         if (!project) {
           return res.status(400).json({ message: 'Project not found' });
         }
+         taskStatus = project.status;
       }
 
       // Create task
       const newTask = await TaskModel.create({
         title,
-        description,
+        
         project_id,
         assignee_id,
-        
-        priority,
+        status: taskStatus,
+    
         due_date,
-        estimated_hours,
+       
         created_by: req.user.id
       });
 
       // Log task creation
       await db.query(
-        'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
-        [newTask.id, req.user.id, 'create', `Task "${title}" created`]
+        'INSERT INTO task_logs (task_id, user_id, action  ) VALUES ($1, $2, $3  )',
+        [newTask.id, req.user.id, 'create' ]
       );
 
       return res.status(201).json({
