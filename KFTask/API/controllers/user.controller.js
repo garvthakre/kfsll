@@ -383,7 +383,7 @@ async getUserRoles(req, res) {
   try {
     const roles = [
       'admin',
-       'user',
+      'employee',
       'vendor'
     ];
 

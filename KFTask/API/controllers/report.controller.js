@@ -335,15 +335,16 @@ export const getUserPerformanceReport = async (req, res, next) => {
     for (const user of result.rows) {
       if (user.user_id) {
         const updateQueryParams = [user.user_id];
-        
-        let updatesQuery = `
-          SELECT 
-            DATE(update_date) AS date,
-            SUM(hours_spent) AS hours,
-            COUNT(DISTINCT task_id) AS tasks_worked_on
-          FROM daily_updates
-          WHERE user_id = $1
-        `;
+ 
+
+let updatesQuery = `
+  SELECT 
+    DATE(update_date) AS date,
+     
+    COUNT(DISTINCT task_id) AS tasks_worked_on
+  FROM daily_updates
+  WHERE user_id = $1
+`;
         
         if (start_date) {
           updateQueryParams.push(start_date);
@@ -365,8 +366,8 @@ export const getUserPerformanceReport = async (req, res, next) => {
         user.daily_updates = updatesResult.rows;
         
         // Calculate additional metrics
-        user.total_hours = updatesResult.rows.reduce((sum, day) => sum + parseFloat(day.hours || 0), 0);
-        user.avg_daily_hours = user.total_hours / Math.max(updatesResult.rows.length, 1);
+        user.total_hours =  0;
+        user.avg_daily_hours = 0;
       }
     }
 
@@ -856,13 +857,13 @@ export const getUserLogsReport = async (req, res, next) => {
     const offset = (pageNum - 1) * limitNum;
     
     // Initialize query parameters array
-    const queryParams = [];
+    let queryParams = [];
     
     // Build base query for counting
     let countQuery = `
       SELECT COUNT(*) as total
       FROM user_logs ul
-      JOIN users u ON ul.user_id = u.id
+      LEFT JOIN users u ON ul.user_id = u.id
       WHERE 1=1
     `;
     
@@ -870,56 +871,85 @@ export const getUserLogsReport = async (req, res, next) => {
     let query = `
       SELECT 
         ul.id AS log_id,
-        u.first_name || ' ' || u.last_name AS user_name,
+        COALESCE(u.first_name || ' ' || u.last_name, 'Unknown User') AS user_name,
         ul.action,
         ul.description,
         ul.created_at,
-        ul.ip_address
+        ul.ip_address,
+        ul.user_id
       FROM user_logs ul
-      JOIN users u ON ul.user_id = u.id
+      LEFT JOIN users u ON ul.user_id = u.id
       WHERE 1=1
     `;
     
-    // Apply filters (skip if 0 or 'all')
-    if (user_id && user_id !== '0' && user_id !== 'all') {
-      queryParams.push(user_id);
-      const filterClause = ` AND ul.user_id = ${queryParams.length}`;
+    // Apply filters with proper validation
+    if (user_id && user_id !== '0' && user_id !== 'all' && user_id.trim() !== '') {
+      queryParams.push(parseInt(user_id));
+      const filterClause = ` AND ul.user_id = $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
     
-    if (action && action !== 'all') {
-      queryParams.push(`%${action}%`);
-      const filterClause = ` AND ul.action LIKE ${queryParams.length}`;
+    if (action && action !== 'all' && action !== '0' && action.trim() !== '') {
+      queryParams.push(`%${action.trim()}%`);
+      const filterClause = ` AND ul.action ILIKE $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
     
-    if (start_date) {
-      queryParams.push(start_date);
-      const filterClause = ` AND ul.created_at >= ${queryParams.length}::date`;
-      query += filterClause;
-      countQuery += filterClause;
+    // Validate and apply start_date filter
+    if (start_date && start_date !== '0' && start_date !== 'all' && start_date.trim() !== '') {
+      // Validate date format (basic check)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (dateRegex.test(start_date.trim())) {
+        queryParams.push(start_date.trim());
+        const filterClause = ` AND DATE(ul.created_at) >= $${queryParams.length}::date`;
+        query += filterClause;
+        countQuery += filterClause;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid start_date format. Please use YYYY-MM-DD format.'
+        });
+      }
     }
     
-    if (end_date) {
-      queryParams.push(end_date);
-      const filterClause = ` AND ul.created_at <= (${queryParams.length}::date + INTERVAL '1 day')`;
-      query += filterClause;
-      countQuery += filterClause;
+    // Validate and apply end_date filter
+    if (end_date && end_date !== '0' && end_date !== 'all' && end_date.trim() !== '') {
+      // Validate date format (basic check)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (dateRegex.test(end_date.trim())) {
+        queryParams.push(end_date.trim());
+        const filterClause = ` AND DATE(ul.created_at) <= $${queryParams.length}::date`;
+        query += filterClause;
+        countQuery += filterClause;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid end_date format. Please use YYYY-MM-DD format.'
+        });
+      }
     }
+    
+    console.log('Count Query:', countQuery);
+    console.log('Query Params for Count:', queryParams);
     
     // Get total count
     const countResult = await db.query(countQuery, queryParams);
     const totalCount = parseInt(countResult.rows[0].total);
     
-    // Order by created_at desc and add pagination
+    // Add order by and pagination to main query
     query += ` ORDER BY ul.created_at DESC`;
-    queryParams.push(limitNum, offset);
-    query += ` LIMIT ${queryParams.length - 1} OFFSET ${queryParams.length}`;
+    
+    // Add pagination parameters
+    const paginationParams = [...queryParams, limitNum, offset];
+    query += ` LIMIT $${paginationParams.length - 1} OFFSET $${paginationParams.length}`;
+    
+    console.log('Main Query:', query);
+    console.log('Query Params for Main:', paginationParams);
     
     // Execute query
-    const result = await db.query(query, queryParams);
+    const result = await db.query(query, paginationParams);
     
     // Create pagination metadata
     const pagination = createPaginationMeta(pageNum, limitNum, totalCount);
@@ -938,6 +968,7 @@ export const getUserLogsReport = async (req, res, next) => {
       filters: req.query
     });
   } catch (error) {
+    console.error('Error in getUserLogsReport:', error);
     next(error);
   }
 };

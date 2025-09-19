@@ -1,5 +1,5 @@
-// const db = require('../config/db');
 import db from '../config/db.js';
+
 /**
  * Task Model
  * Handles database operations for the tasks table
@@ -7,36 +7,28 @@ import db from '../config/db.js';
 const TaskModel = {
   /**
    * Create a new task
-   * @param {Object} taskData - Task information
-   * @returns {Promise<Object>} - New task object
    */
   async create(taskData) {
     const {
       title,
-     
       project_id,
       assignee_id,
       status,
-     
       due_date,
-     
       created_by
     } = taskData;
 
     const query = `
       INSERT INTO tasks 
-      (title,  project_id, assignee_id,    due_date,status,  created_by)
-      VALUES ($1, $2, $3, $4 ,$5,$6 )
+      (title, project_id, assignee_id, due_date, status, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING *
     `;
 
     const values = [
       title,
-     
       project_id,
       assignee_id,
-       
-      
       due_date,
       status,
       created_by
@@ -45,46 +37,42 @@ const TaskModel = {
     const { rows } = await db.query(query, values);
     return rows[0];
   },
-/**
- * Find all tasks where user is assignee or creator (no filters)
- * @param {number} userId - User ID
- * @returns {Promise<Array>} - Array of tasks
- */
-async findAllByUser(userId) {
-  const query = `
-    SELECT t.*,
-      p.title as project_title,
-      a.first_name || ' ' || a.last_name as assignee_name,
-      c.first_name || ' ' || c.last_name as creator_name
-    FROM tasks t
-    LEFT JOIN projects p ON t.project_id = p.id
-    LEFT JOIN users a ON t.assignee_id = a.id
-    LEFT JOIN users c ON t.created_by = c.id
-    WHERE t.created_by = $1 OR t.assignee_id = $1
-    ORDER BY t.due_date ASC
-  `;
-  const { rows } = await db.query(query, [userId]);
-  return rows;
-}
-,
-/**
- * Get all task IDs and titles
- * @returns {Promise<Array>} - Array of objects with id and title
- */
-async getAllTaskIdsAndTitles() {
-  const query = `
-    SELECT id, title
-    FROM tasks
-    ORDER BY id ASC
-  `;
-  const { rows } = await db.query(query);
-  return rows;
-}
-,
+
+  /**
+   * Find all tasks where user is assignee or creator (no filters)
+   */
+  async findAllByUser(userId) {
+    const query = `
+      SELECT t.*,
+        p.title as project_title,
+        a.first_name || ' ' || a.last_name as assignee_name,
+        c.first_name || ' ' || c.last_name as creator_name
+      FROM tasks t
+      LEFT JOIN projects p ON t.project_id = p.id
+      LEFT JOIN users a ON t.assignee_id = a.id
+      LEFT JOIN users c ON t.created_by = c.id
+      WHERE t.created_by = $1 OR t.assignee_id = $1
+      ORDER BY t.due_date ASC
+    `;
+    const { rows } = await db.query(query, [userId]);
+    return rows;
+  },
+
+  /**
+   * Get all task IDs and titles
+   */
+  async getAllTaskIdsAndTitles() {
+    const query = `
+      SELECT id, title
+      FROM tasks
+      ORDER BY id ASC
+    `;
+    const { rows } = await db.query(query);
+    return rows;
+  },
+
   /**
    * Find task by ID
-   * @param {number} id - Task ID
-   * @returns {Promise<Object>} - Task object
    */
   async findById(id) {
     const query = `
@@ -106,10 +94,6 @@ async getAllTaskIdsAndTitles() {
 
   /**
    * Get all tasks with pagination and filters
-   * @param {number} limit - Number of results per page
-   * @param {number} offset - Pagination offset
-   * @param {Object} filters - Filtering options
-   * @returns {Promise<Array>} - Array of tasks
    */
   async findAll(limit = 10, offset = 0, filters = {}) {
     let query = `
@@ -214,9 +198,6 @@ async getAllTaskIdsAndTitles() {
 
   /**
    * Update task information
-   * @param {number} id - Task ID
-   * @param {Object} taskData - Task information to update
-   * @returns {Promise<Object>} - Updated task object
    */
   async update(id, taskData) {
     const {
@@ -267,8 +248,6 @@ async getAllTaskIdsAndTitles() {
 
   /**
    * Delete a task
-   * @param {number} id - Task ID
-   * @returns {Promise<boolean>} - Success status
    */
   async delete(id) {
     const query = 'DELETE FROM tasks WHERE id = $1';
@@ -278,8 +257,6 @@ async getAllTaskIdsAndTitles() {
 
   /**
    * Count total tasks
-   * @param {Object} filters - Filtering options
-   * @returns {Promise<number>} - Total task count
    */
   async countTotal(filters = {}) {
     let query = 'SELECT COUNT(*) FROM tasks t WHERE 1=1';
@@ -358,8 +335,6 @@ async getAllTaskIdsAndTitles() {
 
   /**
    * Add a comment to a task
-   * @param {Object} commentData - Comment data
-   * @returns {Promise<Object>} - New comment object
    */
   async addComment(commentData) {
     const { task_id, user_id, content } = commentData;
@@ -376,10 +351,6 @@ async getAllTaskIdsAndTitles() {
 
   /**
    * Get comments for a task
-   * @param {number} taskId - Task ID
-   * @param {number} limit - Number of comments to return
-   * @param {number} offset - Pagination offset
-   * @returns {Promise<Array>} - Array of comments
    */
   async getComments(taskId, limit = 50, offset = 0) {
     const query = `
@@ -400,8 +371,6 @@ async getAllTaskIdsAndTitles() {
 
   /**
    * Get task statistics by status
-   * @param {number} projectId - Optional project ID to filter by
-   * @returns {Promise<Array>} - Array of tasks grouped by status
    */
   async getTaskStats(projectId = null) {
     let query = `
@@ -422,228 +391,52 @@ async getAllTaskIdsAndTitles() {
     const { rows } = await db.query(query, queryParams);
     return rows;
   },
- 
-/**
- * Add daily update to task
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} - New daily update details
- */
-async addDailyUpdate(req, res) {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
 
-    const taskId = parseInt(req.params.id);
-    const { content, update_date } = req.body;
-
-    // Check if task exists
-    const task = await TaskModel.findById(taskId);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-
-    // Add daily update
-    const dailyUpdate = await TaskModel.addDailyUpdate({
-      task_id: taskId,
-      user_id: req.user.id,
-      content,
-      update_date
-    });
-
-    // Get user details for response
-    const { rows } = await db.query(
-      'SELECT first_name || \' \' || last_name as user_name, profile_image FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    
-    dailyUpdate.user_name = rows[0].user_name;
-    dailyUpdate.profile_image = rows[0].profile_image;
-
-    // Log daily update activity
-    await db.query(
-      'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
-      [taskId, req.user.id, 'daily_update', 'Added a daily update to task']
-    );
-
-    return res.status(201).json({
-      message: 'Daily update added successfully',
-      daily_update: dailyUpdate
-    });
-  } catch (error) {
-    console.error('Add daily update error:', error);
-    return res.status(500).json({ message: 'Server error while adding daily update' });
-  }
-},
-
-/**
- * Get daily updates for task
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} - List of daily updates
- */
-async getDailyUpdates(req, res) {
-  try {
-    const taskId = parseInt(req.params.id);
-    
-    // Check if task exists
-    const task = await TaskModel.findById(taskId);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-
-    const limit = parseInt(req.query.limit) || 50;
-    const offset = parseInt(req.query.offset) || 0;
-
-    const dailyUpdates = await TaskModel.getDailyUpdates(taskId, limit, offset);
-
-    return res.status(200).json({ daily_updates: dailyUpdates });
-  } catch (error) {
-    console.error('Get daily updates error:', error);
-    return res.status(500).json({ message: 'Server error while fetching daily updates' });
-  }
-},
-
- 
- 
-
-/**
- * Get task by ID
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} - Task details
- */
-async getTaskById(req, res) {
-  try {
-    const taskId = parseInt(req.params.id);
-    
-    const task = await TaskModel.findById(taskId);
-    
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-
-    try {
-      // Get feedback (comments) for task
-      const feedback = await TaskModel.getComments(taskId);
-      task.feedback = feedback || [];
-    } catch (error) {
-      console.error('Error fetching feedback:', error);
-      task.feedback = [];
-    }
-
-    try {
-      // Get time entries for task
-      const timeEntries = await TaskModel.getTimeEntries(taskId);
-      task.time_entries = timeEntries || [];
-    } catch (error) {
-      console.error('Error fetching time entries:', error);
-      task.time_entries = [];
-    }
-
-    try {
-      // Get daily updates for task
-      const dailyUpdates = await TaskModel.getDailyUpdates(taskId);
-      task.daily_updates = dailyUpdates || [];
-    } catch (error) {
-      console.error('Error fetching daily updates:', error);
-      task.daily_updates = [];
-    }
-
-    return res.status(200).json({ task });
-  } catch (error) {
-    console.error('Get task by ID error:', error);
-    return res.status(500).json({ message: 'Server error while fetching task' });
-  }
-},
   /**
- * Add feedback to task
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} - New feedback details
- */
-async addFeedback(req, res) {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+   * Add daily update to task
+   */
+  async addDailyUpdate(updateData) {
+    const { task_id, user_id, content, update_date } = updateData;
 
-    const taskId = parseInt(req.params.id);
-    const { content } = req.body;
+    const query = `
+      INSERT INTO daily_updates (task_id, user_id, content, update_date)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `;
 
-    // Check if task exists
-    const task = await TaskModel.findById(taskId);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
+    const values = [
+      task_id,
+      user_id,
+      content,
+      update_date || new Date()
+    ];
 
-    // Add feedback
-    const feedback = await TaskModel.addComment({
-      task_id: taskId,
-      user_id: req.user.id,
-      content
-    });
+    const { rows } = await db.query(query, values);
+    return rows[0];
+  },
 
-    // Get user details for response
-    const { rows } = await db.query(
-      'SELECT first_name || \' \' || last_name as user_name, profile_image FROM users WHERE id = $1',
-      [req.user.id]
-    );
-    
-    feedback.user_name = rows[0].user_name;
-    feedback.profile_image = rows[0].profile_image;
+  /**
+   * Get daily updates for task
+   */
+  async getDailyUpdates(taskId, limit = 50, offset = 0) {
+    const query = `
+      SELECT 
+        du.*,
+        u.first_name || ' ' || u.last_name as user_name,
+        u.profile_image
+      FROM daily_updates du
+      JOIN users u ON du.user_id = u.id
+      WHERE du.task_id = $1
+      ORDER BY du.update_date DESC, du.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
 
-    // Log feedback activity
-    await db.query(
-      'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
-      [taskId, req.user.id, 'feedback', 'Added feedback to task']
-    );
+    const { rows } = await db.query(query, [taskId, limit, offset]);
+    return rows;
+  },
 
-    return res.status(201).json({
-      message: 'Feedback added successfully',
-      feedback
-    });
-  } catch (error) {
-    console.error('Add feedback error:', error);
-    return res.status(500).json({ message: 'Server error while adding feedback' });
-  }
-},
-
-// Replace the existing getComments method with this (renamed to getFeedback):
-/**
- * Get feedback for task
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} - List of feedback
- */
-async getFeedback(req, res) {
-  try {
-    const taskId = parseInt(req.params.id);
-    
-    // Check if task exists
-    const task = await TaskModel.findById(taskId);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-
-    const limit = parseInt(req.query.limit) || 50;
-    const offset = parseInt(req.query.offset) || 0;
-
-    const feedback = await TaskModel.getComments(taskId, limit, offset);
-
-    return res.status(200).json({ feedback });
-  } catch (error) {
-    console.error('Get feedback error:', error);
-    return res.status(500).json({ message: 'Server error while fetching feedback' });
-  }
-},
   /**
    * Track time spent on a task
-   * @param {Object} timeData - Time tracking data
-   * @returns {Promise<Object>} - Time entry object
    */
   async trackTime(timeData) {
     const { task_id, user_id, hours, minutes, description, work_date } = timeData;
@@ -677,8 +470,6 @@ async getFeedback(req, res) {
 
   /**
    * Get time entries for a task
-   * @param {number} taskId - Task ID
-   * @returns {Promise<Array>} - Array of time entries
    */
   async getTimeEntries(taskId) {
     const query = `
@@ -697,8 +488,6 @@ async getFeedback(req, res) {
 
   /**
    * Get overdue tasks
-   * @param {number} limit - Number of tasks to return
-   * @returns {Promise<Array>} - Array of overdue tasks
    */
   async getOverdueTasks(limit = 10) {
     const query = `
@@ -719,9 +508,6 @@ async getFeedback(req, res) {
 
   /**
    * Get upcoming tasks due soon
-   * @param {number} days - Number of days to look ahead
-   * @param {number} limit - Number of tasks to return
-   * @returns {Promise<Array>} - Array of upcoming tasks
    */
   async getUpcomingTasks(days = 7, limit = 10) {
     const query = `

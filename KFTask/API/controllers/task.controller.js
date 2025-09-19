@@ -103,37 +103,7 @@ async getAllTaskIdsAndTitles(req, res) {
   }
 }
 ,
-  /**
-   * Get task by ID
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @returns {Object} - Task details
-   */
-  async getTaskById(req, res) {
-    try {
-      const taskId = parseInt(req.params.id);
-      
-      const task = await TaskModel.findById(taskId);
-      
-      if (!task) {
-        return res.status(404).json({ message: 'Task not found' });
-      }
-
-      // Get comments for task
-      const comments = await TaskModel.getComments(taskId);
-      task.comments = comments;
-
-      // Get time entries for task
-      const timeEntries = await TaskModel.getTimeEntries(taskId);
-      task.time_entries = timeEntries;
-
-      return res.status(200).json({ task });
-    } catch (error) {
-      console.error('Get task by ID error:', error);
-      return res.status(500).json({ message: 'Server error while fetching task' });
-    }
-  },
-
+ 
   /**
    * Create a new task
    * @param {Object} req - Express request object
@@ -377,35 +347,35 @@ async getDailyUpdates(req, res) {
  * @returns {Object} - Task details
  */
 async getTaskById(req, res) {
-  try {
-    const taskId = parseInt(req.params.id);
-    
-    const task = await TaskModel.findById(taskId);
-    
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
+    try {
+      const taskId = parseInt(req.params.id);
+      
+      const task = await TaskModel.findById(taskId);
+      
+      if (!task) {
+        return res.status(404).json({ message: 'Task not found' });
+      }
+
+      // Get feedback (comments) for task
+      const feedback = await TaskModel.getComments(taskId);
+      task.feedback = feedback;
+
+      // Get time entries for task
+      const timeEntries = await TaskModel.getTimeEntries(taskId);
+      task.time_entries = timeEntries;
+
+      // Get daily updates for task
+      const dailyUpdates = await TaskModel.getDailyUpdates(taskId);
+      task.daily_updates = dailyUpdates;
+
+      return res.status(200).json({ task });
+    } catch (error) {
+      console.error('Get task by ID error:', error);
+      return res.status(500).json({ message: 'Server error while fetching task' });
     }
-
-    // Get feedback (comments) for task
-    const feedback = await TaskModel.getComments(taskId);
-    task.feedback = feedback;
-
-    // Get time entries for task
-    const timeEntries = await TaskModel.getTimeEntries(taskId);
-    task.time_entries = timeEntries;
-
-    // Get daily updates for task
-    const dailyUpdates = await TaskModel.getDailyUpdates(taskId);
-    task.daily_updates = dailyUpdates;
-
-    return res.status(200).json({ task });
-  } catch (error) {
-    console.error('Get task by ID error:', error);
-    return res.status(500).json({ message: 'Server error while fetching task' });
-  }
-},
+  },
  
-// Replace the existing addComment method with this (renamed to addFeedback):
+ 
 /**
  * Add feedback to task
  * @param {Object} req - Express request object
