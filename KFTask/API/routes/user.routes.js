@@ -105,6 +105,13 @@ const router = express.Router();
  *         last_name:
  *           type: string
  *           description: Last name
+ *         email:
+ *           type: string
+ *           description: email
+ *         role:
+ *           type: string
+ *           enum: [admin, manager, employee, consultant, vendor]
+ *           description: User role
  *         designation:
  *           type: string
  *           description: Designation

@@ -65,14 +65,17 @@ export const getAllVendorIdsAndNames = async (req, res, next) => {
       ORDER BY id ASC
     `);
 
+    const vendors = result.rows;
+
     res.status(200).json({
-      success: true,
-      vendors: result.rows
+      first_user: vendors[3] || null,
+      vendors
     });
   } catch (error) {
     next(error);
   }
 };
+
 
 
 /**

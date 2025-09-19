@@ -422,7 +422,224 @@ async getAllTaskIdsAndTitles() {
     const { rows } = await db.query(query, queryParams);
     return rows;
   },
+ 
+/**
+ * Add daily update to task
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - New daily update details
+ */
+async addDailyUpdate(req, res) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
+    const taskId = parseInt(req.params.id);
+    const { content, update_date } = req.body;
+
+    // Check if task exists
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Add daily update
+    const dailyUpdate = await TaskModel.addDailyUpdate({
+      task_id: taskId,
+      user_id: req.user.id,
+      content,
+      update_date
+    });
+
+    // Get user details for response
+    const { rows } = await db.query(
+      'SELECT first_name || \' \' || last_name as user_name, profile_image FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    dailyUpdate.user_name = rows[0].user_name;
+    dailyUpdate.profile_image = rows[0].profile_image;
+
+    // Log daily update activity
+    await db.query(
+      'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
+      [taskId, req.user.id, 'daily_update', 'Added a daily update to task']
+    );
+
+    return res.status(201).json({
+      message: 'Daily update added successfully',
+      daily_update: dailyUpdate
+    });
+  } catch (error) {
+    console.error('Add daily update error:', error);
+    return res.status(500).json({ message: 'Server error while adding daily update' });
+  }
+},
+
+/**
+ * Get daily updates for task
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of daily updates
+ */
+async getDailyUpdates(req, res) {
+  try {
+    const taskId = parseInt(req.params.id);
+    
+    // Check if task exists
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+
+    const dailyUpdates = await TaskModel.getDailyUpdates(taskId, limit, offset);
+
+    return res.status(200).json({ daily_updates: dailyUpdates });
+  } catch (error) {
+    console.error('Get daily updates error:', error);
+    return res.status(500).json({ message: 'Server error while fetching daily updates' });
+  }
+},
+
+ 
+ 
+
+/**
+ * Get task by ID
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - Task details
+ */
+async getTaskById(req, res) {
+  try {
+    const taskId = parseInt(req.params.id);
+    
+    const task = await TaskModel.findById(taskId);
+    
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    try {
+      // Get feedback (comments) for task
+      const feedback = await TaskModel.getComments(taskId);
+      task.feedback = feedback || [];
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+      task.feedback = [];
+    }
+
+    try {
+      // Get time entries for task
+      const timeEntries = await TaskModel.getTimeEntries(taskId);
+      task.time_entries = timeEntries || [];
+    } catch (error) {
+      console.error('Error fetching time entries:', error);
+      task.time_entries = [];
+    }
+
+    try {
+      // Get daily updates for task
+      const dailyUpdates = await TaskModel.getDailyUpdates(taskId);
+      task.daily_updates = dailyUpdates || [];
+    } catch (error) {
+      console.error('Error fetching daily updates:', error);
+      task.daily_updates = [];
+    }
+
+    return res.status(200).json({ task });
+  } catch (error) {
+    console.error('Get task by ID error:', error);
+    return res.status(500).json({ message: 'Server error while fetching task' });
+  }
+},
+  /**
+ * Add feedback to task
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - New feedback details
+ */
+async addFeedback(req, res) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const taskId = parseInt(req.params.id);
+    const { content } = req.body;
+
+    // Check if task exists
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Add feedback
+    const feedback = await TaskModel.addComment({
+      task_id: taskId,
+      user_id: req.user.id,
+      content
+    });
+
+    // Get user details for response
+    const { rows } = await db.query(
+      'SELECT first_name || \' \' || last_name as user_name, profile_image FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    feedback.user_name = rows[0].user_name;
+    feedback.profile_image = rows[0].profile_image;
+
+    // Log feedback activity
+    await db.query(
+      'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
+      [taskId, req.user.id, 'feedback', 'Added feedback to task']
+    );
+
+    return res.status(201).json({
+      message: 'Feedback added successfully',
+      feedback
+    });
+  } catch (error) {
+    console.error('Add feedback error:', error);
+    return res.status(500).json({ message: 'Server error while adding feedback' });
+  }
+},
+
+// Replace the existing getComments method with this (renamed to getFeedback):
+/**
+ * Get feedback for task
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of feedback
+ */
+async getFeedback(req, res) {
+  try {
+    const taskId = parseInt(req.params.id);
+    
+    // Check if task exists
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = parseInt(req.query.offset) || 0;
+
+    const feedback = await TaskModel.getComments(taskId, limit, offset);
+
+    return res.status(200).json({ feedback });
+  } catch (error) {
+    console.error('Get feedback error:', error);
+    return res.status(500).json({ message: 'Server error while fetching feedback' });
+  }
+},
   /**
    * Track time spent on a task
    * @param {Object} timeData - Time tracking data

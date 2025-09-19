@@ -614,9 +614,9 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
 
 /**
  * @swagger
- * /api/tasks/{id}/comments:
+ * /api/tasks/{id}/feedback:
  *   get:
- *     summary: Get comments for a task
+ *     summary: Get feedback for a task
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -641,16 +641,7 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  *         description: Pagination offset
  *     responses:
  *       200:
- *         description: List of comments
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 comments:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/TaskComment'
+ *         description: List of feedback
  *       401:
  *         description: Not authenticated
  *       404:
@@ -658,13 +649,13 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  *       500:
  *         description: Server error
  */
-router.get('/:id/comments', authenticateToken, TaskController.getComments);
+router.get('/:id/feedback', authenticateToken, TaskController.getFeedback);
 
 /**
  * @swagger
- * /api/tasks/{id}/comments:
+ * /api/tasks/{id}/feedback:
  *   post:
- *     summary: Add a comment to a task
+ *     summary: Add feedback to a task
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -680,10 +671,16 @@ router.get('/:id/comments', authenticateToken, TaskController.getComments);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AddCommentRequest'
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: Feedback content
  *     responses:
  *       201:
- *         description: Comment added successfully
+ *         description: Feedback added successfully
  *       400:
  *         description: Validation error
  *       401:
@@ -693,10 +690,97 @@ router.get('/:id/comments', authenticateToken, TaskController.getComments);
  *       500:
  *         description: Server error
  */
-router.post('/:id/comments', [
+router.post('/:id/feedback', [
   authenticateToken,
-  check('content').notEmpty().withMessage('Comment content is required')
-], TaskController.addComment);
+  check('content').notEmpty().withMessage('Feedback content is required')
+], TaskController.addFeedback);
+
+/**
+ * @swagger
+ * /api/tasks/{id}/daily-updates:
+ *   get:
+ *     summary: Get daily updates for a task
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Task ID
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Results per page
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Pagination offset
+ *     responses:
+ *       200:
+ *         description: List of daily updates
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:id/daily-updates', authenticateToken, TaskController.getDailyUpdates);
+
+/**
+ * @swagger
+ * /api/tasks/{id}/daily-updates:
+ *   post:
+ *     summary: Add a daily update to a task
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Task ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *             properties:
+ *               content:
+ *                 type: string
+ *                 description: Daily update content
+ *               update_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Date of the update (optional, defaults to current date)
+ *     responses:
+ *       201:
+ *         description: Daily update added successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Task not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/:id/daily-updates', [
+  authenticateToken,
+  check('content').notEmpty().withMessage('Daily update content is required')
+], TaskController.addDailyUpdate);
 
 /**
  * @swagger
