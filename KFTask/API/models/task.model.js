@@ -41,22 +41,68 @@ const TaskModel = {
   /**
    * Find all tasks where user is assignee or creator (no filters)
    */
-  async findAllByUser(userId) {
-    const query = `
-      SELECT t.*,
-        p.title as project_title,
-        a.first_name || ' ' || a.last_name as assignee_name,
-        c.first_name || ' ' || c.last_name as creator_name
-      FROM tasks t
-      LEFT JOIN projects p ON t.project_id = p.id
-      LEFT JOIN users a ON t.assignee_id = a.id
-      LEFT JOIN users c ON t.created_by = c.id
-      WHERE t.created_by = $1 OR t.assignee_id = $1
-      ORDER BY t.due_date ASC
-    `;
-    const { rows } = await db.query(query, [userId]);
-    return rows;
-  },
+async findAllByUser(userId, limit, offset) {
+  const tasksQuery = `
+    SELECT t.*,
+      p.title as project_title,
+      a.first_name || ' ' || a.last_name as assignee_name,
+      c.first_name || ' ' || c.last_name as creator_name
+    FROM tasks t
+    LEFT JOIN projects p ON t.project_id = p.id
+    LEFT JOIN users a ON t.assignee_id = a.id
+    LEFT JOIN users c ON t.created_by = c.id
+    WHERE t.created_by = $1 OR t.assignee_id = $1
+    ORDER BY t.due_date ASC
+    LIMIT $2 OFFSET $3
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM tasks t
+    WHERE t.created_by = $1 OR t.assignee_id = $1
+  `;
+
+  const [tasksResult, countResult] = await Promise.all([
+    db.query(tasksQuery, [userId, limit, offset]),
+    db.query(countQuery, [userId])
+  ]);
+
+  return {
+    tasks: tasksResult.rows,
+    total: parseInt(countResult.rows[0].total, 10)
+  };
+}
+,
+  /**
+   * Find all tasks where user is assignee or creator (no filters)
+   */
+async findAllByUserIDANDTITLES(userId, limit, offset) {
+const tasksQuery = `
+  SELECT id, title
+  FROM tasks
+  WHERE created_by = $1 OR assignee_id = $1
+  ORDER BY due_date ASC
+  LIMIT $2 OFFSET $3
+`;
+
+const countQuery = `
+  SELECT COUNT(*) AS total
+  FROM tasks
+  WHERE created_by = $1 OR assignee_id = $1
+`;
+
+
+  const [tasksResult, countResult] = await Promise.all([
+    db.query(tasksQuery, [userId, limit, offset]),
+    db.query(countQuery, [userId])
+  ]);
+
+  return {
+    tasks: tasksResult.rows,
+    total: parseInt(countResult.rows[0].total, 10)
+  };
+}
+,
 
   /**
    * Get all task IDs and titles

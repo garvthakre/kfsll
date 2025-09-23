@@ -126,18 +126,6 @@ router.get('/tasks', authenticateToken, getTaskReport);
  *           enum: [pending, in_progress, completed, overdue, cancelled]
  *         description: Filter by task status
  *       - in: query
- *         name: start_date
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by start date (YYYY-MM-DD)
- *       - in: query
- *         name: end_date
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by end date (YYYY-MM-DD)
- *       - in: query
  *         name: page
  *         schema:
  *           type: integer
@@ -170,66 +158,104 @@ router.get('/tasks', authenticateToken, getTaskReport);
  *                     properties:
  *                       user_id:
  *                         type: integer
+ *                         description: User ID
+ *                         example: 1
  *                       user_name:
  *                         type: string
- *                       total_tasks:
- *                         type: string
- *                       completed_tasks:
- *                         type: string
- *                       in_progress_tasks:
- *                         type: string
- *                       overdue_tasks:
- *                         type: string
- *                       avg_completion_days:
- *                         type: number
- *                         nullable: true
- *                       daily_updates:
+ *                         description: Full name of the user
+ *                         example: "John Doe"
+ *                       tasks_assigned:
+ *                         type: integer
+ *                         description: Number of tasks assigned
+ *                         example: 5
+ *                       tasks_completed:
+ *                         type: integer
+ *                         description: Number of tasks completed
+ *                         example: 3
+ *                       tasks:
  *                         type: array
- *                       total_hours:
- *                         type: number
- *                       avg_daily_hours:
- *                         type: number
+ *                         description: Array of individual tasks assigned to user
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             task_id:
+ *                               type: integer
+ *                               description: Task ID
+ *                               example: 101
+ *                             task_title:
+ *                               type: string
+ *                               description: Task title
+ *                               example: "Design Homepage"
+ *                             task_status:
+ *                               type: string
+ *                               description: Current status of the task
+ *                               enum: [pending, in_progress, completed, overdue, cancelled]
+ *                               example: "completed"
+ *                             project_name:
+ *                               type: string
+ *                               description: Name of the project this task belongs to
+ *                               example: "Website Redesign"
+ *                             assigned_on:
+ *                               type: string
+ *                               format: date-time
+ *                               description: Date and time when the task was assigned
+ *                               example: "2025-01-10T09:30:00Z"
+ *                             completion_by:
+ *                               type: string
+ *                               format: date
+ *                               description: Due date for task completion
+ *                               example: "2025-01-12"
  *                 pagination:
  *                   type: object
  *                   properties:
  *                     current_page:
  *                       type: integer
+ *                       example: 1
  *                     total_pages:
  *                       type: integer
+ *                       example: 2
  *                     total_items:
  *                       type: integer
+ *                       example: 15
  *                     items_per_page:
  *                       type: integer
+ *                       example: 20
  *                     has_next:
  *                       type: boolean
+ *                       example: true
  *                     has_previous:
  *                       type: boolean
+ *                       example: false
  *                 filters:
  *                   type: object
+ *                   description: Applied filters
  *                   properties:
  *                     user_id:
- *                       type: integer
+ *                       type: string
  *                       nullable: true
+ *                       example: "all"
  *                     project_id:
- *                       type: integer
+ *                       type: string
  *                       nullable: true
+ *                       example: "5"
  *                     status:
  *                       type: string
  *                       nullable: true
- *                     start_date:
+ *                       example: "completed"
+ *                     page:
  *                       type: string
- *                       nullable: true
- *                     end_date:
+ *                       example: "1"
+ *                     limit:
  *                       type: string
- *                       nullable: true
- *       400:
- *         description: Bad request - Invalid filter parameters
- *       401:
- *         description: Unauthorized
- *       500:
- *         description: Server error
+ *                       example: "20"
  */
-router.get('/user-performance', authenticateToken, authorize(['admin', 'manager', 'vendor']), getUserPerformanceReport);
+
+router.get(
+  '/user-performance',
+  authenticateToken,
+  authorize(['admin', 'manager', 'vendor']), 
+  getUserPerformanceReport
+);
 
 /**
  * @swagger
@@ -429,7 +455,7 @@ router.get('/project-status', authenticateToken, getProjectStatusReport);
  *         description: Server error
  * 
  */
-router.get('/vendor-performance', authenticateToken, authorize(['admin']), getVendorPerformanceReport);
+router.get('/vendor-performance', authenticateToken, authorize(['admin','vendor']), getVendorPerformanceReport);
 
 /**
  * @swagger
@@ -473,7 +499,7 @@ router.post('/export', authenticateToken, exportReport);
  * @swagger
  * /api/reports/user-logs:
  *   get:
- *     summary: Get user activity logs report 
+ *     summary: Get employee user activity logs report
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
@@ -483,18 +509,6 @@ router.post('/export', authenticateToken, exportReport);
  *         schema:
  *           type: integer
  *         description: Filter by user ID
- *       - in: query
- *         name: start_date
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by start date
- *       - in: query
- *         name: end_date
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by end date
  *       - in: query
  *         name: action
  *         schema:
@@ -517,7 +531,7 @@ router.post('/export', authenticateToken, exportReport);
  *         description: Number of items per page
  *     responses:
  *       200:
- *         description: User logs retrieved successfully with pagination
+ *         description: Employee user logs retrieved successfully with pagination
  *       401:
  *         description: Unauthorized
  *       403:
@@ -525,6 +539,11 @@ router.post('/export', authenticateToken, exportReport);
  *       500:
  *         description: Server error
  */
-router.get('/user-logs', authenticateToken, authorize(['admin']), getUserLogsReport);
+router.get(
+  '/user-logs', 
+  authenticateToken, 
+  authorize(['admin','vendor']), 
+  getUserLogsReport
+);
 
 export default router;

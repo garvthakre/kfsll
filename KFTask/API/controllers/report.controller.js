@@ -189,102 +189,77 @@ export const getTaskReport = async (req, res, next) => {
  */
 export const getUserPerformanceReport = async (req, res, next) => {
   try {
-    const { 
-      user_id, 
-      project_id,
-      status,
-      start_date, 
-      end_date, 
-      page = 1, 
-      limit = 20 
-    } = req.query;
+    const { user_id, project_id, status, page = 1, limit = 20 } = req.query;
 
-    // Validate pagination parameters
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const offset = (pageNum - 1) * limitNum;
 
-    // For vendor users, restrict to their consultants
-    if (req.user.role === 'vendor') {
-      const vendorId = await getVendorIdByUserId(req.user.id);
-      if (!vendorId) {
-        return res.status(403).json({
-          success: false,
-          message: 'You do not have permission to access this report'
-        });
-      }
-      if (user_id && user_id !== '0' && user_id !== 'all') {
-        // Check vendor ownership of consultant
-        const isFromVendor = await isConsultantFromVendor(vendorId, user_id);
-        if (!isFromVendor) {
-          return res.status(403).json({
-            success: false,
-            message: 'You do not have permission to view this user\'s performance'
-          });
-        }
-      }
-    }
+    // // Vendor access restriction
+    // if (req.user.role === 'vendor') {
+    //   const vendorId = await getVendorIdByUserId(req.user.id);
+    //   if (!vendorId) {
+    //     return res.status(403).json({
+    //       success: false,
+    //       message: 'You do not have permission to access this report'
+    //     });
+    //   }
+    //   if (user_id && user_id !== '0' && user_id !== 'all') {
+    //     const isFromVendor = await isConsultantFromVendor(vendorId, user_id);
+    //     if (!isFromVendor) {
+    //       return res.status(403).json({
+    //         success: false,
+    //         message: 'You do not have permission to view this user\'s performance'
+    //       });
+    //     }
+    //   }
+    // }
 
-    // Require user_id filter for non-admin users (unless 'all' or '0')
-    if ((!user_id || user_id === '0' || user_id === 'all') && req.user.role !== 'admin') {
-      return res.status(400).json({
-        success: false,
-        message: 'User ID filter is required'
-      });
-    }
+    // Require user_id filter for non-admins
+    // if ((!user_id || user_id === '0' || user_id === 'all') && req.user.role !== 'admin') {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: 'User ID filter is required'
+    //   });
+    // }
 
-    // Build the base queries
     const queryParams = [];
-    
+
+    // Count query
     let countQuery = `
-      SELECT COUNT(DISTINCT u.id) as total
+      SELECT COUNT(DISTINCT u.id) AS total
       FROM users u
-      LEFT JOIN task_assignments ta ON u.id = ta.user_id
-      LEFT JOIN tasks t ON ta.task_id = t.id
+      INNER JOIN task_assignments ta ON u.id = ta.user_id
+      INNER JOIN tasks t ON ta.task_id = t.id
       LEFT JOIN projects p ON t.project_id = p.id
-      WHERE 1=1
+      WHERE u.role = 'employee'
     `;
-    
+
+    // Main query
     let query = `
       SELECT 
         u.id AS user_id,
-        u.first_name || ' ' || u.last_name AS user_name,
-        COUNT(t.id) AS total_tasks,
-        SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
-        SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_tasks,
-        SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END) AS pending_tasks,
-        SUM(CASE WHEN t.due_date < CURRENT_DATE AND t.status != 'completed' THEN 1 ELSE 0 END) AS overdue_tasks,
-        ROUND(AVG(CASE WHEN t.status = 'completed' THEN 
-          EXTRACT(EPOCH FROM (t.updated_at - t.created_at))/3600/24 
-        ELSE NULL END), 2) AS avg_completion_days
+        u.first_name, u.last_name, u.first_name || ' ' || u.last_name AS name,
+        p.id AS project_id,
+        p.title AS project_name,
+        t.id AS task_id,
+        t.title AS task_title,
+        t.status AS task_status,
+        ta.assigned_at AS assigned_on,
+        t.due_date AS completion_by
       FROM users u
-      LEFT JOIN task_assignments ta ON u.id = ta.user_id
-      LEFT JOIN tasks t ON ta.task_id = t.id
+      INNER JOIN task_assignments ta ON u.id = ta.user_id
+      INNER JOIN tasks t ON ta.task_id = t.id
       LEFT JOIN projects p ON t.project_id = p.id
-      WHERE 1=1
+      WHERE u.role = 'employee'
     `;
 
-    // Apply filters (skip if 0 or 'all')
+    // Filters
     if (user_id && user_id !== '0' && user_id !== 'all') {
       queryParams.push(user_id);
       const filterClause = ` AND u.id = $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
-    } else if (req.user.role === 'vendor') {
-      const vendorId = await getVendorIdByUserId(req.user.id);
-      const consultantIds = await getVendorConsultantIds(vendorId);
-      if (consultantIds.length === 0) {
-        return res.status(200).json({
-          success: true,
-          data: [],
-          pagination: createPaginationMeta(pageNum, limitNum, 0),
-          filters: req.query
-        });
-      }
-      queryParams.push(consultantIds);
-      const vendorFilterClause = ` AND u.id = ANY($${queryParams.length})`;
-      query += vendorFilterClause;
-      countQuery += vendorFilterClause;
     }
 
     if (project_id && project_id !== '0' && project_id !== 'all') {
@@ -301,85 +276,56 @@ export const getUserPerformanceReport = async (req, res, next) => {
       countQuery += filterClause;
     }
 
-    if (start_date) {
-      queryParams.push(start_date);
-      const filterClause = ` AND (t.created_at >= $${queryParams.length}::date OR t.created_at IS NULL)`;
-      query += filterClause;
-      countQuery += filterClause;
-    }
-
-    if (end_date) {
-      queryParams.push(end_date);
-      const filterClause = ` AND (t.created_at <= $${queryParams.length}::date OR t.created_at IS NULL)`;
-      query += filterClause;
-      countQuery += filterClause;
-    }
-
-    // Get total count
+    // Count total users
     const countResult = await db.query(countQuery, queryParams);
     const totalCount = parseInt(countResult.rows[0].total);
 
-    // Add GROUP BY, ORDER BY, LIMIT and OFFSET to main query
-    query += ` 
-      GROUP BY u.id, u.first_name, u.last_name
-      ORDER BY u.first_name, u.last_name
-    `;
-    
+    // Add pagination
+    query += ` ORDER BY u.first_name, u.last_name, t.id`;
     queryParams.push(limitNum, offset);
     query += ` LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
 
-    // Execute query
     const result = await db.query(query, queryParams);
 
-    // Add daily updates for each user (limited data for performance)
-    for (const user of result.rows) {
-      if (user.user_id) {
-        const updateQueryParams = [user.user_id];
- 
-
-let updatesQuery = `
-  SELECT 
-    DATE(update_date) AS date,
-     
-    COUNT(DISTINCT task_id) AS tasks_worked_on
-  FROM daily_updates
-  WHERE user_id = $1
-`;
-        
-        if (start_date) {
-          updateQueryParams.push(start_date);
-          updatesQuery += ` AND update_date >= $${updateQueryParams.length}::date`;
-        }
-        
-        if (end_date) {
-          updateQueryParams.push(end_date);
-          updatesQuery += ` AND update_date <= $${updateQueryParams.length}::date`;
-        }
-        
-        updatesQuery += ` 
-          GROUP BY DATE(update_date)
-          ORDER BY DATE(update_date) DESC
-          LIMIT 30
-        `;
-        
-        const updatesResult = await db.query(updatesQuery, updateQueryParams);
-        user.daily_updates = updatesResult.rows;
-        
-        // Calculate additional metrics
-        user.total_hours =  0;
-        user.avg_daily_hours = 0;
+    // Group tasks by user
+    const userPerformance = {};
+    result.rows.forEach(row => {
+      const userId = row.user_id;
+      if (!userPerformance[userId]) {
+        userPerformance[userId] = {
+          user_id: userId,
+          user_name: row.name,
+          tasks_assigned: 0,
+          tasks_completed: 0,
+          tasks: []
+        };
       }
-    }
+      userPerformance[userId].tasks_assigned++;
+      if (row.task_status === 'completed') {
+        userPerformance[userId].tasks_completed++;
+      }
+      userPerformance[userId].tasks.push({
+        task_id: row.task_id,
+        task_title: row.task_title,
+        task_status: row.task_status,
+        project_name: row.project_name,
+        assigned_on: row.assigned_on,
+        completion_by: row.completion_by
+      });
+    });
 
-    // Create pagination metadata
+    const performanceData = Object.values(userPerformance);
     const pagination = createPaginationMeta(pageNum, limitNum, totalCount);
 
-    // Log report generation
-    await logUserAction(req.user.id, 'Generated user performance report', `Filters: ${JSON.stringify(req.query)}`);
+    await logUserAction(
+      req.user.id,
+      'Generated user performance report',
+      `Filters: ${JSON.stringify(req.query)}`
+    );
 
     res.status(200).json({
       success: true,
-      data: result.rows,
+      data: performanceData,
       pagination,
       filters: req.query
     });
@@ -599,7 +545,7 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       LEFT JOIN users u ON v.user_id = u.id
       LEFT JOIN projects p ON p.project_type LIKE '%Vendor - ' || v.company_name || '%'
       LEFT JOIN users c ON c.working_for = v.user_id
-      LEFT JOIN consultants con ON con.user_id = c.id
+    
       LEFT JOIN task_assignments ta ON c.id = ta.user_id
       LEFT JOIN tasks t ON ta.task_id = t.id
       WHERE 1=1
@@ -669,7 +615,7 @@ export const getVendorPerformanceReport = async (req, res, next) => {
           u.id AS user_id,
           u.first_name || ' ' || u.last_name AS user_name,
           u.email,
-          con.specialization,
+          
           COUNT(t.id) AS total_tasks,
           SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
           SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_tasks,
@@ -842,31 +788,24 @@ export const exportReport = async (req, res, next) => {
  */
 export const getUserLogsReport = async (req, res, next) => {
   try {
-    const { 
-      user_id,
-      start_date,
-      end_date,
-      action,
-      page = 1,
-      limit = 20
-    } = req.query;
-    
+    const { user_id, action, page = 1, limit = 20 } = req.query;
+
     // Validate pagination parameters
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const offset = (pageNum - 1) * limitNum;
-    
+
     // Initialize query parameters array
     let queryParams = [];
-    
+
     // Build base query for counting
     let countQuery = `
       SELECT COUNT(*) as total
       FROM user_logs ul
-      LEFT JOIN users u ON ul.user_id = u.id
-      WHERE 1=1
+      INNER JOIN users u ON ul.user_id = u.id
+      WHERE u.role = 'employee'
     `;
-    
+
     // Build base query for user logs
     let query = `
       SELECT 
@@ -878,89 +817,47 @@ export const getUserLogsReport = async (req, res, next) => {
         ul.ip_address,
         ul.user_id
       FROM user_logs ul
-      LEFT JOIN users u ON ul.user_id = u.id
-      WHERE 1=1
+      INNER JOIN users u ON ul.user_id = u.id
+      WHERE u.role = 'employee'
     `;
-    
-    // Apply filters with proper validation
+
+    // Apply filters
     if (user_id && user_id !== '0' && user_id !== 'all' && user_id.trim() !== '') {
       queryParams.push(parseInt(user_id));
       const filterClause = ` AND ul.user_id = $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
-    
+
     if (action && action !== 'all' && action !== '0' && action.trim() !== '') {
       queryParams.push(`%${action.trim()}%`);
       const filterClause = ` AND ul.action ILIKE $${queryParams.length}`;
       query += filterClause;
       countQuery += filterClause;
     }
-    
-    // Validate and apply start_date filter
-    if (start_date && start_date !== '0' && start_date !== 'all' && start_date.trim() !== '') {
-      // Validate date format (basic check)
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (dateRegex.test(start_date.trim())) {
-        queryParams.push(start_date.trim());
-        const filterClause = ` AND DATE(ul.created_at) >= $${queryParams.length}::date`;
-        query += filterClause;
-        countQuery += filterClause;
-      } else {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid start_date format. Please use YYYY-MM-DD format.'
-        });
-      }
-    }
-    
-    // Validate and apply end_date filter
-    if (end_date && end_date !== '0' && end_date !== 'all' && end_date.trim() !== '') {
-      // Validate date format (basic check)
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (dateRegex.test(end_date.trim())) {
-        queryParams.push(end_date.trim());
-        const filterClause = ` AND DATE(ul.created_at) <= $${queryParams.length}::date`;
-        query += filterClause;
-        countQuery += filterClause;
-      } else {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid end_date format. Please use YYYY-MM-DD format.'
-        });
-      }
-    }
-    
-    console.log('Count Query:', countQuery);
-    console.log('Query Params for Count:', queryParams);
-    
+
     // Get total count
     const countResult = await db.query(countQuery, queryParams);
     const totalCount = parseInt(countResult.rows[0].total);
-    
+
     // Add order by and pagination to main query
     query += ` ORDER BY ul.created_at DESC`;
-    
-    // Add pagination parameters
-    const paginationParams = [...queryParams, limitNum, offset];
-    query += ` LIMIT $${paginationParams.length - 1} OFFSET $${paginationParams.length}`;
-    
-    console.log('Main Query:', query);
-    console.log('Query Params for Main:', paginationParams);
-    
+    queryParams.push(limitNum, offset);
+    query += ` LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
+
     // Execute query
-    const result = await db.query(query, paginationParams);
-    
+    const result = await db.query(query, queryParams);
+
     // Create pagination metadata
     const pagination = createPaginationMeta(pageNum, limitNum, totalCount);
-    
+
     // Log this report access
     await logUserAction(
       req.user.id, 
-      'Generated user logs report', 
-      `Generated user logs report with filters: ${JSON.stringify(req.query)}`
+      'Generated employee user logs report', 
+      `Generated employee user logs report with filters: ${JSON.stringify(req.query)}`
     );
-    
+
     res.status(200).json({
       success: true,
       data: result.rows,

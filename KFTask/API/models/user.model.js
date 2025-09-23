@@ -13,46 +13,72 @@ const UserModel = {
    * @returns {Promise<Object>} - New user object
    */
 async create(userData) {
-  const { 
-    first_name, 
-    last_name, 
-    email, 
-     
-    role, 
-    department, 
+  const {
+    first_name,
+    last_name,
+    email,
+    role,
+    department,
     position,
     profile_image,
     designation,
     type,
     working_type,
-    working_for,
+    working_for: providedworkingfor,
     phone_no
   } = userData;
-    const defaultPassword = 'kftask@123';
+
+  const defaultPassword = 'kftask@123';
+
   // Hash password
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(defaultPassword, salt);
 
+  let working_for = 999; // Default fallback
+  let working_for_type = 'user'; // Default type
+
+  if (providedworkingfor) {
+    try {
+      // Check if providedworkingfor exists in vendors only
+      const vendorCheck = await db.query(
+        `SELECT id FROM vendors WHERE id = $1`,
+        [providedworkingfor]
+      );
+
+      if (vendorCheck.rows.length > 0) {
+        // Found as vendor
+        working_for = providedworkingfor;
+        working_for_type = 'vendor';
+      }
+   
+    } catch (error) {
+      // If any database error occurs during check, use default values
+      console.warn('Error checking vendor relationship:', error.message);
+      working_for = 999;
+      working_for_type = 'user';
+    }
+  }
+
   const query = `
     INSERT INTO users 
-    (first_name, last_name, email, password, role, department, position, profile_image, designation, type, working_type, working_for,phone_no) 
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,$13) 
-    RETURNING id, first_name, last_name, email, role, department, position, status, designation, type, working_type, working_for,phone_no, created_at
+    (first_name, last_name, email, password, role, department, position, profile_image, designation, type, working_type, working_for, phone_no)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    RETURNING id, first_name, last_name, email, role, department, position, status, designation, type, working_type, working_for, phone_no, created_at
   `;
 
   const values = [
-    first_name, 
-    last_name, 
-    email, 
-    hashedPassword, 
-    role || 'employee', 
-    department || null, 
+    first_name,
+    last_name,
+    email,
+    hashedPassword,
+    role || 'employee',
+    department || null,
     position || null,
     profile_image || null,
     designation || null,
     type || null,
     working_type || null,
-    working_for || null,
+    working_for,
     phone_no || null
   ];
 
@@ -62,7 +88,8 @@ async create(userData) {
   } catch (error) {
     throw error;
   }
-},
+}
+,
 
   /**
    * Find user by email
@@ -101,6 +128,7 @@ async findAll(limit = 10, offset = 0) {
     SELECT id, first_name, last_name, email, role, department, 
     position, status, designation, type, working_type, working_for,phone_no, created_at, updated_at
     FROM users
+    WHERE id != 999
     ORDER BY created_at DESC
     LIMIT $1 OFFSET $2
   `;
@@ -155,7 +183,9 @@ async update(id, userData) {
   const {
     first_name,
     last_name,
+    email,
     department,
+    role,
     position,
     status,
     profile_image,
@@ -181,12 +211,13 @@ async update(id, userData) {
       working_for = COALESCE($10, working_for),
       phone_no = COALESCE($11, phone_no),
       email = COALESCE($12, email),
+      role = COALESCE($13, role),
       updated_at = CURRENT_TIMESTAMP
-    WHERE id = $13
+    WHERE id = $14
     RETURNING id, first_name, last_name, email, role, department, position, status, designation, type, working_type, working_for,phone_no, created_at, updated_at
   `;
 
-  const values = [first_name, last_name, department, position, status, profile_image, designation, type, working_type, working_for,phone_no,email, id];
+  const values = [first_name, last_name, department, position, status, profile_image, designation, type, working_type, working_for,phone_no,email,role, id];
   
   const { rows } = await db.query(query, values);
   return rows[0];

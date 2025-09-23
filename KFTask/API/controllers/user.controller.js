@@ -28,7 +28,7 @@ const UserController = {
       return res.status(200).json({
         users,
         pagination: {
-          total,
+          total: total - 1,
           page,
           limit,
           pages: Math.ceil(total / limit)
@@ -513,7 +513,7 @@ async getDashboardOverview(req, res) {
     return res.status(200).json({
       success: true,
       data: {
-        totalUsers,
+        totalUsers:totalUsers-1,
         activeProjects,
         pendingTasks
       }

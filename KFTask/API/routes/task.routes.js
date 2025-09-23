@@ -229,18 +229,37 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
  * @swagger
  * /api/tasks/my:
  *   get:
- *     summary: Get all tasks assigned to or created by the  user
+ *     summary: Get all tasks assigned to or created by the user (with pagination)
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of tasks per page
  *     responses:
  *       200:
- *         description: All tasks for the authenticated user
+ *         description: All tasks for the authenticated user with pagination
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
  *                 tasks:
  *                   type: array
  *                   items:
@@ -251,6 +270,65 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
  *         description: Server error
  */
 router.get('/my', authenticateToken, TaskController.getMyTasks);
+/**
+ * @swagger
+ * /api/tasks/my-tasksid:
+ *   get:
+ *     summary: Get all tasks assigned to or created by the user 
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of tasks per page
+ *     responses:
+ *       200:
+ *         description: Minimal task info for the authenticated user with pagination
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 limit:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       project_title:
+ *                         type: string
+ *                       assignee_name:
+ *                         type: string
+ *                       creator_name:
+ *                         type: string
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDTITLES);
+
 /**
  * @swagger
  * /api/tasks/ids-titles:

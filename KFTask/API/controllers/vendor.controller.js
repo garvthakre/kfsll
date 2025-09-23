@@ -59,22 +59,43 @@ export const getAllVendors = async (req, res, next) => {
  */
 export const getAllVendorIdsAndNames = async (req, res, next) => {
   try {
-    const result = await db.query(`
+    // Fetch vendors from vendors table
+    const vendorResult = await db.query(`
       SELECT id, company_name AS name
       FROM vendors
       ORDER BY id ASC
     `);
+    const vendors = vendorResult.rows;
 
-    const vendors = result.rows;
+    // Fetch users whose role = 'vendor'
+    const userVendorsResult = await db.query(`
+      SELECT id, first_name || ' ' || last_name AS name
+      FROM users
+      WHERE role = 'vendor'
+      ORDER BY id ASC
+    `);
+    const userVendors = userVendorsResult.rows;
+
+    // Fetch special user with id = 999
+    const specialUserResult = await db.query(`
+      SELECT id, first_name || ' ' || last_name AS name, role
+      FROM users
+      WHERE id = 999
+    `);
+    const specialUser = specialUserResult.rows[0] || null;
 
     res.status(200).json({
-      first_user: vendors[3] || null,
-      vendors
+      success: true,
+      special_user: specialUser,
+      vendors,
+       userVendors
     });
   } catch (error) {
     next(error);
   }
 };
+
+
 
 
 
@@ -101,14 +122,11 @@ export const getMyConsultants = async (req, res, next) => {
       });
     }
 
-    // Same permission logic (skip since user is self)
-    // For admin or vendor accessing own consultants
-
-    // Fetch consultants working for this vendor
+ 
     const consultants = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.email, u.status, u.department, u.position, u.designation, u.type, u.working_type
        FROM users u
-       WHERE u.role = 'consultant' AND u.working_for = $1
+       WHERE u.role = 'employee' AND u.working_for = $1
        ORDER BY u.first_name, u.last_name`,
       [vendorUserId]
     );
@@ -407,30 +425,34 @@ export const getVendorConsultants = async (req, res, next) => {
     );
     
     if (vendor.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
-      });
+      const user = await db.query(
+    'SELECT * FROM users WHERE id = $1',
+    [id]
+  );
+    if (user.rows.length === 0) {
+    return res.status(404).json({
+      success: false,
+      message: 'Vendor or User not found'
+    });
+  }
     }
     
     // Check permissions if not admin
-    if (req.user.role !== 'admin') {
-      // If vendor role, check if the user is associated with this vendor
-      if (req.user.role === 'vendor' && vendor.rows[0].user_id !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          message: 'You do not have permission to view these consultants'
-        });
-      }
-    }
+    // if (req.user.role !== 'admin') {
+    //   // If vendor role, check if the user is associated with this vendor
+    //   if (req.user.role === 'vendor' && vendor.rows[0].user_id !== req.user.id) {
+    //     return res.status(403).json({
+    //       success: false,
+    //       message: 'You do not have permission to view these consultants'
+    //     });
+    //   }
+    // }
     
-    // Get consultants for this vendor
-    // We identify consultants working for this vendor through their association in the users table
-    // by checking which users are working for this vendor
+ 
     const consultants = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.email, u.status, u.department, u.position, u.designation, u.type, u.working_type
        FROM users u
-       WHERE u.role = 'consultant' AND u.working_for = $1
+       WHERE   u.working_for = $1
        ORDER BY u.first_name, u.last_name`,
       [id]  
     );
@@ -453,45 +475,55 @@ export const getVendorConsultants = async (req, res, next) => {
 export const getVendorProjects = async (req, res, next) => {
   try {
     const { id } = req.params;
-    
-    // Check if vendor exists
+
+    // Check vendor first
     const vendor = await db.query(
       'SELECT * FROM vendors WHERE id = $1',
       [id]
     );
-    
-    if (vendor.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
+
+    if (vendor.rows.length > 0) {
+      const projects = await db.query(
+        `SELECT p.*
+         FROM projects p
+         WHERE p.project_type LIKE $1
+         ORDER BY p.start_date DESC`,
+        [`%Vendor - ${vendor.rows[0].company_name}%`]
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: projects.rows
       });
     }
-    
-    // Check permissions if not admin
-    if (req.user.role !== 'admin') {
-      // If vendor role, check if the user is associated with this vendor
-      if (req.user.role === 'vendor' && vendor.rows[0].user_id !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          message: 'You do not have permission to view these projects'
-        });
-      }
-    }
-    
-    // Get projects associated with this vendor
-    // Projects are associated with vendors through the project type field
-    const projects = await db.query(
-      `SELECT p.*
-       FROM projects p
-       WHERE p.project_type LIKE $1
-       ORDER BY p.start_date DESC`,
-      [`%Vendor - ${vendor.rows[0].company_name}%`]
+
+    // If not vendor, check user
+    const user = await db.query(
+      'SELECT * FROM users WHERE id = $1',
+      [id]
     );
-    
-    res.status(200).json({
-      success: true,
-      data: projects.rows
+
+    if (user.rows.length > 0) {
+      const projects = await db.query(
+        `SELECT p.*
+         FROM projects p
+         WHERE p.project_type LIKE $1
+         ORDER BY p.start_date DESC`,
+        [`%User - ${user.rows[0].first_name} ${user.rows[0].last_name}%`]
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: projects.rows
+      });
+    }
+
+    // Neither vendor nor user
+    return res.status(404).json({
+      success: false,
+      message: 'Vendor or User not found'
     });
+
   } catch (error) {
     next(error);
   }
@@ -507,61 +539,89 @@ export const getVendorTasks = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.query;
-    
-    // Check if vendor exists
+
+    // --- Check Vendor ---
     const vendor = await db.query(
       'SELECT * FROM vendors WHERE id = $1',
       [id]
     );
-    
-    if (vendor.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor not found'
+
+    if (vendor.rows.length > 0) {
+      let query = `
+        SELECT t.id, t.title, t.status, t.due_date,
+               p.title as project_name,
+               u.first_name, u.last_name
+        FROM tasks t
+        JOIN task_assignments ta ON t.id = ta.task_id
+        JOIN users u ON ta.user_id = u.id
+        JOIN projects p ON t.project_id = p.id
+        WHERE u.working_for = $1
+      `;
+
+      const queryParams = [vendor.rows[0].user_id];
+
+      if (status) {
+        query += ` AND t.status = $2`;
+        queryParams.push(status);
+      }
+
+      query += ` ORDER BY t.due_date ASC`;
+
+      const tasks = await db.query(query, queryParams);
+
+      return res.status(200).json({
+        success: true,
+        data: tasks.rows
       });
     }
-    
-    // Check permissions if not admin
-    if (req.user.role !== 'admin') {
-      // If vendor role, check if the user is associated with this vendor
-      if (req.user.role === 'vendor' && vendor.rows[0].user_id !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          message: 'You do not have permission to view these tasks'
-        });
+
+    // --- Check User ---
+    const user = await db.query(
+      'SELECT * FROM users WHERE id = $1',
+      [id]
+    );
+
+    if (user.rows.length > 0) {
+      let query = `
+        SELECT t.id, t.title, t.status, t.due_date,
+               p.title as project_name,
+               u.first_name, u.last_name
+        FROM tasks t
+        JOIN task_assignments ta ON t.id = ta.task_id
+        JOIN users u ON ta.user_id = u.id
+        JOIN projects p ON t.project_id = p.id
+        WHERE ta.user_id = $1
+      `;
+
+      const queryParams = [user.rows[0].id];
+
+      if (status) {
+        query += ` AND t.status = $2`;
+        queryParams.push(status);
       }
+
+      query += ` ORDER BY t.due_date ASC`;
+
+      const tasks = await db.query(query, queryParams);
+
+      return res.status(200).json({
+        success: true,
+        data: tasks.rows
+      });
     }
-    
-    // Create base query
-    let query = `
-      SELECT t.*, p.title as project_name, u.first_name, u.last_name
-      FROM tasks t
-      JOIN task_assignments ta ON t.id = ta.task_id
-      JOIN users u ON ta.user_id = u.id
-      JOIN projects p ON t.project_id = p.id
-      WHERE u.working_for = $1
-    `;
-    
-    const queryParams = [vendor.rows[0].user_id];
-    
-    // Add status filter if provided
-    if (status) {
-      query += ` AND t.status = $2`;
-      queryParams.push(status);
-    }
-    
-    query += ` ORDER BY t.due_date ASC`;
-    
-    const tasks = await db.query(query, queryParams);
-    
-    res.status(200).json({
-      success: true,
-      data: tasks.rows
+
+    // --- Neither Vendor nor User ---
+    return res.status(404).json({
+      success: false,
+      message: 'Vendor or User not found'
     });
+
   } catch (error) {
     next(error);
   }
 };
+
+
 
 /**
  * Assign a task to a consultant
@@ -585,7 +645,7 @@ export const assignTaskToConsultant = async (req, res, next) => {
   const consultant = await db.query(
       `SELECT u.id, u.first_name, u.last_name, u.status, u.working_for, u.role
        FROM users u
-       WHERE u.id = $1 AND u.role = 'consultant'`,
+       WHERE u.id = $1 `,
       [consultantId]
     );
     

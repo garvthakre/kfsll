@@ -73,20 +73,56 @@ const TaskController = {
     }
   },
   /**
- * Get all tasks assigned to or created by the current user (no filters, no pagination)
+ * Get all tasks assigned to or created by the current user  
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
+async getMyTasksWITHIDANDTITLES(req, res) {
+  try {
+    const userId = req.user.id;
+   
+
+ 
+
+    const  tasks  = await TaskModel.findAllByUserIDANDTITLES(userId );
+
+    return res.status(200).json({
+      tasks
+     
+    });
+  } catch (error) {
+    console.error('Get my tasks error:', error);
+    return res.status(500).json({ message: 'Server error while fetching my tasks' });
+  }
+},
+
 async getMyTasks(req, res) {
   try {
     const userId = req.user.id;
-    const tasks = await TaskModel.findAllByUser(userId);
-    return res.status(200).json({ tasks });
+    const { page = 1, limit = 10 } = req.query;
+
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));  
+    const offset = (pageNum - 1) * limitNum;
+
+    const { tasks, total } = await TaskModel.findAllByUser(userId, limitNum, offset);
+
+    return res.status(200).json({
+      tasks,
+      pagination: {
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
+      }
+    });
   } catch (error) {
     console.error('Get my tasks error:', error);
     return res.status(500).json({ message: 'Server error while fetching my tasks' });
   }
 }
+
+
 ,
 /**
  * Get all tasks (id and title only)
