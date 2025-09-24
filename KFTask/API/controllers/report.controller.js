@@ -271,7 +271,7 @@ export const getUserPerformanceReport = async (req, res, next) => {
   
       const [tasksResult, countResult] = await Promise.all([
         db.query(tasksQuery, queryParams),
-        db.query(countQuery, queryParams.slice(0, -2)) // Remove limit and offset for count
+        db.query(countQuery, queryParams.slice(0, -2))  
       ]);
   
       const tasks = tasksResult.rows;
