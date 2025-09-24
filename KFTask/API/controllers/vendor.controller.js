@@ -190,6 +190,40 @@ export const getVendorById = async (req, res, next) => {
     next(error);
   }
 };
+export const getMyConsultantsIDAandName = async (req, res, next) => {
+  try {
+    const vendorUserId = req.user.id;
+
+    // Verify vendor exists for the logged-in user
+    const vendor = await db.query(
+      'SELECT id FROM users WHERE id = $1 AND role = $2',
+      [vendorUserId, 'vendor']
+    );
+
+    if (vendor.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found for the logged-in user'
+      });
+    }
+
+    // Fetch consultants with only id and name
+    const consultants = await db.query(
+      `SELECT u.id, u.first_name || ' ' || u.last_name AS name
+       FROM users u
+       WHERE u.role = 'employee' AND u.working_for = $1
+       ORDER BY u.first_name, u.last_name`,
+      [vendorUserId]
+    );
+
+    res.status(200).json({
+      success: true,
+      data: consultants.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
  * Create a new vendor

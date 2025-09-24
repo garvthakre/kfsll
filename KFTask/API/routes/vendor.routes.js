@@ -16,7 +16,8 @@ import {
   getVendorTasks,
   assignTaskToConsultant,
   getAllVendorIdsAndNames,
-  getMyConsultants
+  getMyConsultants,
+  getMyConsultantsIDAandName
 }from '../controllers/vendor.controller.js';
 import { authenticateToken, authorize } from '../middleware/auth.middleware.js';
 
@@ -78,6 +79,49 @@ router.get('/ids-names', authenticateToken, authorize(['admin', 'vendor']), getA
  *         description: Server error
  */
 router.get('/my-consultants', authenticateToken, authorize(['vendor', 'admin']), getMyConsultants);
+/**
+ * @swagger
+ * /api/vendors/my-consultantsId:
+ *   get:
+ *     summary: Get consultants (id and name only) for logged-in vendor user
+ *     tags: [Vendors]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of consultants retrieved successfully (id and name only)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 101
+ *                       name:
+ *                         type: string
+ *                         example: "Alice Johnson"
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Vendor profile not found
+ *       500:
+ *         description: Server error
+ */
+router.get(
+  '/my-consultantsId',
+  authenticateToken,
+  authorize(['vendor', 'admin']),
+  getMyConsultantsIDAandName
+);
 
 /**
  * @swagger
