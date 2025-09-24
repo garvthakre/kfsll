@@ -100,49 +100,49 @@ import { authenticateToken, authorize } from '../middleware/auth.middleware.js'
  */
 router.get('/tasks', authenticateToken, getTaskReport);
 
+ 
 /**
  * @swagger
  * /api/reports/user-performance:
  *   get:
- *     summary: Get user performance report  
+ *     summary: Get all tasks created by the authenticated user  
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: user_id
- *         schema:
- *           type: integer
- *         description: Filter by user ID
- *       - in: query
  *         name: project_id
  *         schema:
  *           type: integer
- *         description: Filter by project ID
+ *           default: 0
+ *         description: Filter by project ID (0 for all projects)
+ *       - in: query
+ *         name: assignee_id
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Filter by assignee ID (0 for all assignees)
  *       - in: query
  *         name: status
  *         schema:
  *           type: string
- *           enum: [pending, in_progress, completed, overdue, cancelled]
- *         description: Filter by task status
+ *           default: "0"
+ *         description: Filter by status (0 for all statuses)
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
- *           minimum: 1
  *           default: 1
  *         description: Page number for pagination
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *           minimum: 1
- *           maximum: 100
- *           default: 20
- *         description: Number of items per page
+ *           default: 10
+ *         description: Number of tasks per page (max 100)
  *     responses:
  *       200:
- *         description: User performance report retrieved successfully
+ *         description: List of created tasks in simplified format
  *         content:
  *           application/json:
  *             schema:
@@ -152,111 +152,69 @@ router.get('/tasks', authenticateToken, getTaskReport);
  *                   type: boolean
  *                   example: true
  *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       user_id:
- *                         type: integer
- *                         description: User ID
- *                         example: 1
- *                       user_name:
- *                         type: string
- *                         description: Full name of the user
- *                         example: "John Doe"
- *                       tasks_assigned:
- *                         type: integer
- *                         description: Number of tasks assigned
- *                         example: 5
- *                       tasks_completed:
- *                         type: integer
- *                         description: Number of tasks completed
- *                         example: 3
- *                       tasks:
- *                         type: array
- *                         description: Array of individual tasks assigned to user
- *                         items:
- *                           type: object
- *                           properties:
- *                             task_id:
- *                               type: integer
- *                               description: Task ID
- *                               example: 101
- *                             task_title:
- *                               type: string
- *                               description: Task title
- *                               example: "Design Homepage"
- *                             task_status:
- *                               type: string
- *                               description: Current status of the task
- *                               enum: [pending, in_progress, completed, overdue, cancelled]
- *                               example: "completed"
- *                             project_name:
- *                               type: string
- *                               description: Name of the project this task belongs to
- *                               example: "Website Redesign"
- *                             assigned_on:
- *                               type: string
- *                               format: date-time
- *                               description: Date and time when the task was assigned
- *                               example: "2025-01-10T09:30:00Z"
- *                             completion_by:
- *                               type: string
- *                               format: date
- *                               description: Due date for task completion
- *                               example: "2025-01-12"
- *                 pagination:
  *                   type: object
  *                   properties:
- *                     current_page:
- *                       type: integer
- *                       example: 1
- *                     total_pages:
- *                       type: integer
- *                       example: 2
- *                     total_items:
- *                       type: integer
- *                       example: 15
- *                     items_per_page:
- *                       type: integer
- *                       example: 20
- *                     has_next:
- *                       type: boolean
- *                       example: true
- *                     has_previous:
- *                       type: boolean
- *                       example: false
- *                 filters:
- *                   type: object
- *                   description: Applied filters
- *                   properties:
- *                     user_id:
- *                       type: string
- *                       nullable: true
- *                       example: "all"
- *                     project_id:
- *                       type: string
- *                       nullable: true
- *                       example: "5"
- *                     status:
- *                       type: string
- *                       nullable: true
- *                       example: "completed"
- *                     page:
- *                       type: string
- *                       example: "1"
- *                     limit:
- *                       type: string
- *                       example: "20"
+ *                     tasks:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             example: 1
+ *                           task_title:
+ *                             type: string
+ *                             example: "Task-1"
+ *                           project_title:
+ *                             type: string
+ *                             example: "Project-1"
+ *                           assigned_user:
+ *                             type: string
+ *                             example: "John Doe"
+ *                           created_on:
+ *                             type: string
+ *                             example: "10-Jan-2025"
+ *                           completion_date:
+ *                             type: string
+ *                             example: "12-Jan-2025"
+ *                           status:
+ *                             type: string
+ *                             example: "Completed"
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                         page:
+ *                           type: integer
+ *                         limit:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *                         hasNextPage:
+ *                           type: boolean
+ *                         hasPrevPage:
+ *                           type: boolean
+ *                     filters_applied:
+ *                       type: object
+ *                       properties:
+ *                         project_id:
+ *                           type: integer
+ *                         assignee_id:
+ *                           type: integer
+ *                         status:
+ *                           type: string
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
  */
-
 router.get(
   '/user-performance',
   authenticateToken,
   authorize(['admin', 'manager', 'vendor']), 
   getUserPerformanceReport
 );
-
 /**
  * @swagger
  * /api/reports/project-status:

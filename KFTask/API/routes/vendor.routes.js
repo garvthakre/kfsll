@@ -106,7 +106,7 @@ router.get('/my-consultants', authenticateToken, authorize(['vendor', 'admin']),
  *       500:
  *         description: Server error
  */
-router.get('/', authenticateToken, authorize(['admin']), getAllVendors);
+router.get('/', authenticateToken, authorize(['admin','vendor']), getAllVendors);
 
 /**
  * @swagger

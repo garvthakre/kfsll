@@ -190,117 +190,119 @@ export const getTaskReport = async (req, res, next) => {
  */
 export const getUserPerformanceReport = async (req, res, next) => {
   try {
-    const loginUserId = req.user.id;  
-
-    const page = parseInt(req.query.page) || 1;
-    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const offset = (page - 1) * limit;
-
-    // Only allow the logged-in user’s id for filtering
-    const filters = {
-      user_id: loginUserId,  
-      project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
-      status: req.query.status || null
-    };
-
-    // Build WHERE clause dynamically
-    let whereConditions = [`t.assignee_id = $1`]; // always match logged-in user
-    let queryParams = [filters.user_id];
-    let paramIndex = 2;
-
-    if (filters.project_id) {
-      whereConditions.push(`t.project_id = $${paramIndex}`);
-      queryParams.push(filters.project_id);
-      paramIndex++;
-    }
-
-    if (filters.status) {
-      whereConditions.push(`t.status = $${paramIndex}`);
-      queryParams.push(filters.status);
-      paramIndex++;
-    }
-
-    const whereClause =
-      whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
-
-    // Main query for user performance data
-    const query = `
-      SELECT 
-        u.id as user_id,
-        u.first_name || ' ' || u.last_name as user_name,
-        COUNT(t.id) as tasks_assigned,
-        COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as tasks_completed,
-        json_agg(
-          json_build_object(
-            'task_id', t.id,
-            'task_title', t.title,
-            'task_status', t.status,
-            'project_name', p.title,
-            'project_id',p.id,
-            'assigned_on', t.created_at,
-            'assignee_id', t.assignee_id,
-            'completion_by', t.due_date
-          ) ORDER BY t.created_at DESC
-        ) as tasks
-      FROM users u
-      LEFT JOIN tasks t ON u.id = t.assignee_id
-      LEFT JOIN projects p ON t.project_id = p.id
-      ${whereClause}
-      GROUP BY u.id, u.first_name, u.last_name
-      HAVING COUNT(t.id) > 0
-      ORDER BY u.first_name, u.last_name
-      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-    `;
-
-    // Count query for pagination
-    const countQuery = `
-      SELECT COUNT(DISTINCT u.id) as total
-      FROM users u
-      LEFT JOIN tasks t ON u.id = t.assignee_id
-      LEFT JOIN projects p ON t.project_id = p.id
-      ${whereClause}
-      HAVING COUNT(t.id) > 0
-    `;
-
-    // Add pagination params
-    queryParams.push(limit, offset);
-
-    // Execute queries
-    const [dataResult, countResult] = await Promise.all([
-      db.query(query, queryParams),
-      db.query(countQuery, queryParams.slice(0, -2)) // remove limit+offset for count
-    ]);
-
-    const total =
-      countResult.rows.length > 0 ? parseInt(countResult.rows[0].total, 10) : 0;
-    const totalPages = Math.ceil(total / limit);
-
-    return res.status(200).json({
-      success: true,
-      data: dataResult.rows,
-      pagination: {
-        current_page: page,
-        total_pages: totalPages,
-        total_items: total,
-        items_per_page: limit,
-        has_next: page < totalPages,
-        has_previous: page > 1
-      },
-      filters: {
-        user_id: loginUserId.toString(),
-        project_id: filters.project_id ? filters.project_id.toString() : "all",
-        status: filters.status || "all",
-        page: page.toString(),
-        limit: limit.toString()
+      const userId = req.user.id;
+      const { 
+        project_id = 0, 
+        assignee_id = 0, 
+        status = 0,
+        page = 1, 
+        limit = 10 
+      } = req.query;
+  
+      const pageNum = Math.max(1, parseInt(page));
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+      const offset = (pageNum - 1) * limitNum;
+  
+      // Build WHERE conditions
+      let whereConditions = ['t.created_by = $1'];
+      let queryParams = [userId];
+      let paramIndex = 2;
+  
+      // Add project filter  
+      if (project_id && parseInt(project_id) !== 0) {
+        whereConditions.push(`t.project_id = $${paramIndex}`);
+        queryParams.push(parseInt(project_id));
+        paramIndex++;
       }
-    });
-  } catch (error) {
-    console.error("Get user performance report error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error while fetching user performance report"
-    });
-  }
+  
+      // Add assignee filter  
+      if (assignee_id && parseInt(assignee_id) !== 0) {
+        whereConditions.push(`t.assignee_id = $${paramIndex}`);
+        queryParams.push(parseInt(assignee_id));
+        paramIndex++;
+      }
+  
+      // Add status filter  
+      if (status && status !== '0') {
+        whereConditions.push(`t.status = $${paramIndex}`);
+        queryParams.push(status);
+        paramIndex++;
+      }
+  
+      const whereClause = whereConditions.join(' AND ');
+  
+      // Main query for tasks
+      const tasksQuery = `
+        SELECT 
+          t.id,
+          t.title as task_title,
+           t.assignee_id as assignee_id,
+          p.title as project_title,
+          p.id as project_id,
+          COALESCE(u.first_name || ' ' || u.last_name, 'Unassigned') as assigned_user,
+
+          TO_CHAR(t.created_at, 'DD-Mon-YYYY') as created_on,
+          TO_CHAR(t.due_date, 'DD-Mon-YYYY') as completion_date,
+          CASE 
+            WHEN t.status = 'planning' THEN 'planning'
+            WHEN t.status = 'in_progress' THEN 'In Progress'
+            WHEN t.status = 'completed' THEN 'Completed'
+      
+            WHEN t.status = 'on_hold' THEN 'On Hold'
+            WHEN t.status = 'cancelled' THEN 'Cancelled'
+            ELSE 'Pending'
+          END as status
+        FROM tasks t
+        LEFT JOIN projects p ON t.project_id = p.id
+        LEFT JOIN users u ON t.assignee_id = u.id
+        WHERE ${whereClause}
+        ORDER BY t.created_at DESC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `;
+  
+      queryParams.push(limitNum, offset);
+  
+      // Count query for pagination
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM tasks t
+        WHERE ${whereClause}
+      `;
+  
+      const [tasksResult, countResult] = await Promise.all([
+        db.query(tasksQuery, queryParams),
+        db.query(countQuery, queryParams.slice(0, -2)) // Remove limit and offset for count
+      ]);
+  
+      const tasks = tasksResult.rows;
+      const total = parseInt(countResult.rows[0].total);
+  
+      return res.status(200).json({
+        success: true,
+        data: {
+          tasks,
+          pagination: {
+            total,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: Math.ceil(total / limitNum),
+            hasNextPage: pageNum < Math.ceil(total / limitNum),
+            hasPrevPage: pageNum > 1
+          },
+          filters_applied: {
+            project_id: parseInt(project_id),
+            assignee_id: parseInt(assignee_id),
+            status: status
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Get my created tasks error:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: 'Server error while fetching created tasks' 
+      });
+    }
 };
 
 

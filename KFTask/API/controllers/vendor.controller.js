@@ -32,7 +32,13 @@ export const getAllVendors = async (req, res, next) => {
        LIMIT $1 OFFSET $2`,
       [limit, offset]
     );
-    
+        const userVendorsResult = await db.query(`
+      SELECT id, first_name || ' ' || last_name AS name,email,status,role
+      FROM users
+      WHERE role = 'vendor'
+      ORDER BY id ASC
+    `);
+    const userVendors = userVendorsResult.rows;
     // Count total vendors for pagination
     const countResult = await db.query('SELECT COUNT(*) FROM vendors');
     const totalVendors = parseInt(countResult.rows[0].count);
@@ -40,6 +46,7 @@ export const getAllVendors = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: vendors.rows,
+      userVendors,
       pagination: {
         total: totalVendors,
         page: parseInt(page),
