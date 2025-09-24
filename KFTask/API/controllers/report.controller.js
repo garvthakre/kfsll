@@ -458,6 +458,12 @@ export const getProjectStatusReport = async (req, res, next) => {
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
+/**
+ * Get vendor performance report with filtering and pagination
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @param {Function} next - Express next middleware function
+ */
 export const getVendorPerformanceReport = async (req, res, next) => {
   try {
     const { 
@@ -491,11 +497,16 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       WHERE 1=1
     `;
     
-    // Build base query for vendor performance
+    // Build base query for vendor performance with user information
     let query = `
       SELECT 
         v.id AS vendor_id,
         v.company_name,
+        u.first_name,
+        u.last_name,
+        u.email,
+        u.status,
+        u.role,
         COUNT(DISTINCT p.id) AS total_projects,
         COUNT(DISTINCT c.id) AS total_consultants,
         COUNT(t.id) AS total_tasks,
@@ -517,7 +528,6 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       LEFT JOIN users u ON v.user_id = u.id
       LEFT JOIN projects p ON p.project_type LIKE '%Vendor - ' || v.company_name || '%'
       LEFT JOIN users c ON c.working_for = v.user_id
-    
       LEFT JOIN task_assignments ta ON c.id = ta.user_id
       LEFT JOIN tasks t ON ta.task_id = t.id
       WHERE 1=1
@@ -570,7 +580,7 @@ export const getVendorPerformanceReport = async (req, res, next) => {
     
     // Group, order by and add pagination to main query
     query += ` 
-      GROUP BY v.id, v.company_name
+      GROUP BY v.id, v.company_name, u.first_name, u.last_name, u.email, u.status, u.role
       ORDER BY v.company_name
     `;
     
@@ -580,6 +590,15 @@ export const getVendorPerformanceReport = async (req, res, next) => {
     // Execute main query
     const result = await db.query(query, queryParams);
     
+    // Get all vendor users for additional data (similar to getAllVendors)
+    const userVendorsResult = await db.query(`
+      SELECT id, first_name || ' ' || last_name AS name, email, status, role
+      FROM users
+      WHERE role = 'vendor'
+      ORDER BY id ASC
+    `);
+    const userVendors = userVendorsResult.rows;
+    
     // For each vendor, get their consultants performance with the same filters
     for (const vendor of result.rows) {
       let consultantsQuery = `
@@ -587,7 +606,6 @@ export const getVendorPerformanceReport = async (req, res, next) => {
           u.id AS user_id,
           u.first_name || ' ' || u.last_name AS user_name,
           u.email,
-          
           COUNT(t.id) AS total_tasks,
           SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
           SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_tasks,
@@ -669,6 +687,7 @@ export const getVendorPerformanceReport = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: result.rows,
+      userVendors, // Added similar to getAllVendors
       pagination,
       summary,
       filters: req.query,

@@ -479,7 +479,8 @@ async getUserProjects(req, res) {
     console.error('Get user projects error:', error);
     return res.status(500).json({ message: 'Server error while fetching user projects' });
   }
-},/**
+},
+/**
  * Get dashboard overview data
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -487,8 +488,13 @@ async getUserProjects(req, res) {
  */
 async getDashboardOverview(req, res) {
   try {
+     const totalUsersQuery = `
+      SELECT COUNT(*) as count 
+      FROM users
+      WHERE role = 'employee'
+    `;
     // Get total users count
-    const totalUsersQuery = 'SELECT COUNT(*) as count FROM users';
+ 
     const totalUsersResult = await db.query(totalUsersQuery);
     const totalUsers = parseInt(totalUsersResult.rows[0].count);
 

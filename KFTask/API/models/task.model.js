@@ -79,13 +79,13 @@ async findAllByUser(userId, limit, offset) {
   /**
    * Find all tasks where user is assignee or creator (no filters)
    */
-async findAllByUserIDANDTITLES(userId, limit, offset) {
+async findAllByUserIDANDTITLES(userId ) {
 const tasksQuery = `
   SELECT id, title
   FROM tasks
   WHERE created_by = $1 OR assignee_id = $1
   ORDER BY due_date ASC
-  LIMIT $2 OFFSET $3
+  
 `;
 
 const countQuery = `
@@ -96,7 +96,7 @@ const countQuery = `
 
 
   const [tasksResult, countResult] = await Promise.all([
-    db.query(tasksQuery, [userId, limit, offset]),
+    db.query(tasksQuery, [userId]),
     db.query(countQuery, [userId])
   ]);
 

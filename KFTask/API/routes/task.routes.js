@@ -278,34 +278,15 @@ router.get('/my', authenticateToken, TaskController.getMyTasks);
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number for pagination
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Number of tasks per page
  *     responses:
  *       200:
- *         description: Minimal task info for the authenticated user with pagination
+ *         description: Minimal task info for the authenticated user (no pagination)
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
  *                 total:
- *                   type: integer
- *                 page:
- *                   type: integer
- *                 limit:
- *                   type: integer
- *                 totalPages:
  *                   type: integer
  *                 tasks:
  *                   type: array
@@ -316,18 +297,13 @@ router.get('/my', authenticateToken, TaskController.getMyTasks);
  *                         type: integer
  *                       title:
  *                         type: string
- *                       project_title:
- *                         type: string
- *                       assignee_name:
- *                         type: string
- *                       creator_name:
- *                         type: string
  *       401:
  *         description: Not authenticated
  *       500:
  *         description: Server error
  */
 router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDTITLES);
+
 
 /**
  * @swagger
