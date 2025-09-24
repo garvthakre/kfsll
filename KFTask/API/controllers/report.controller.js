@@ -181,6 +181,7 @@ export const getTaskReport = async (req, res, next) => {
   }
 };
 
+ 
 /**
  * Get user performance report with pagination
  * @param {Object} req - Express request object
@@ -189,150 +190,119 @@ export const getTaskReport = async (req, res, next) => {
  */
 export const getUserPerformanceReport = async (req, res, next) => {
   try {
-    const { user_id, project_id, status, page = 1, limit = 20 } = req.query;
+    const loginUserId = req.user.id;  
 
-    const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
-    const offset = (pageNum - 1) * limitNum;
+    const page = parseInt(req.query.page) || 1;
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const offset = (page - 1) * limit;
 
-    // // Vendor access restriction
-    // if (req.user.role === 'vendor') {
-    //   const vendorId = await getVendorIdByUserId(req.user.id);
-    //   if (!vendorId) {
-    //     return res.status(403).json({
-    //       success: false,
-    //       message: 'You do not have permission to access this report'
-    //     });
-    //   }
-    //   if (user_id && user_id !== '0' && user_id !== 'all') {
-    //     const isFromVendor = await isConsultantFromVendor(vendorId, user_id);
-    //     if (!isFromVendor) {
-    //       return res.status(403).json({
-    //         success: false,
-    //         message: 'You do not have permission to view this user\'s performance'
-    //       });
-    //     }
-    //   }
-    // }
+    // Only allow the logged-in user’s id for filtering
+    const filters = {
+      user_id: loginUserId,  
+      project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
+      status: req.query.status || null
+    };
 
-    // Require user_id filter for non-admins
-    // if ((!user_id || user_id === '0' || user_id === 'all') && req.user.role !== 'admin') {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: 'User ID filter is required'
-    //   });
-    // }
+    // Build WHERE clause dynamically
+    let whereConditions = [`t.assignee_id = $1`]; // always match logged-in user
+    let queryParams = [filters.user_id];
+    let paramIndex = 2;
 
-    const queryParams = [];
+    if (filters.project_id) {
+      whereConditions.push(`t.project_id = $${paramIndex}`);
+      queryParams.push(filters.project_id);
+      paramIndex++;
+    }
 
-    // Count query
-    let countQuery = `
-      SELECT COUNT(DISTINCT u.id) AS total
-      FROM users u
-      INNER JOIN task_assignments ta ON u.id = ta.user_id
-      INNER JOIN tasks t ON ta.task_id = t.id
-      LEFT JOIN projects p ON t.project_id = p.id
-      WHERE u.role = 'employee'
-    `;
+    if (filters.status) {
+      whereConditions.push(`t.status = $${paramIndex}`);
+      queryParams.push(filters.status);
+      paramIndex++;
+    }
 
-    // Main query
-    let query = `
+    const whereClause =
+      whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
+
+    // Main query for user performance data
+    const query = `
       SELECT 
-        u.id AS user_id,
-        u.first_name, u.last_name, u.first_name || ' ' || u.last_name AS name,
-        p.id AS project_id,
-        p.title AS project_name,
-        t.id AS task_id,
-        t.title AS task_title,
-        t.status AS task_status,
-        ta.assigned_at AS assigned_on,
-        t.due_date AS completion_by
+        u.id as user_id,
+        u.first_name || ' ' || u.last_name as user_name,
+        COUNT(t.id) as tasks_assigned,
+        COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as tasks_completed,
+        json_agg(
+          json_build_object(
+            'task_id', t.id,
+            'task_title', t.title,
+            'task_status', t.status,
+            'project_name', p.title,
+            'project_id',p.id,
+            'assigned_on', t.created_at,
+            'assignee_id', t.assignee_id,
+            'completion_by', t.due_date
+          ) ORDER BY t.created_at DESC
+        ) as tasks
       FROM users u
-      INNER JOIN task_assignments ta ON u.id = ta.user_id
-      INNER JOIN tasks t ON ta.task_id = t.id
+      LEFT JOIN tasks t ON u.id = t.assignee_id
       LEFT JOIN projects p ON t.project_id = p.id
-      WHERE u.role = 'employee'
+      ${whereClause}
+      GROUP BY u.id, u.first_name, u.last_name
+      HAVING COUNT(t.id) > 0
+      ORDER BY u.first_name, u.last_name
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
-    // Filters
-    if (user_id && user_id !== '0' && user_id !== 'all') {
-      queryParams.push(user_id);
-      const filterClause = ` AND u.id = $${queryParams.length}`;
-      query += filterClause;
-      countQuery += filterClause;
-    }
+    // Count query for pagination
+    const countQuery = `
+      SELECT COUNT(DISTINCT u.id) as total
+      FROM users u
+      LEFT JOIN tasks t ON u.id = t.assignee_id
+      LEFT JOIN projects p ON t.project_id = p.id
+      ${whereClause}
+      HAVING COUNT(t.id) > 0
+    `;
 
-    if (project_id && project_id !== '0' && project_id !== 'all') {
-      queryParams.push(project_id);
-      const filterClause = ` AND t.project_id = $${queryParams.length}`;
-      query += filterClause;
-      countQuery += filterClause;
-    }
+    // Add pagination params
+    queryParams.push(limit, offset);
 
-    if (status && status !== 'all') {
-      queryParams.push(status);
-      const filterClause = ` AND t.status = $${queryParams.length}`;
-      query += filterClause;
-      countQuery += filterClause;
-    }
+    // Execute queries
+    const [dataResult, countResult] = await Promise.all([
+      db.query(query, queryParams),
+      db.query(countQuery, queryParams.slice(0, -2)) // remove limit+offset for count
+    ]);
 
-    // Count total users
-    const countResult = await db.query(countQuery, queryParams);
-    const totalCount = parseInt(countResult.rows[0].total);
+    const total =
+      countResult.rows.length > 0 ? parseInt(countResult.rows[0].total, 10) : 0;
+    const totalPages = Math.ceil(total / limit);
 
-    // Add pagination
-    query += ` ORDER BY u.first_name, u.last_name, t.id`;
-    queryParams.push(limitNum, offset);
-    query += ` LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
-
-    const result = await db.query(query, queryParams);
-
-    // Group tasks by user
-    const userPerformance = {};
-    result.rows.forEach(row => {
-      const userId = row.user_id;
-      if (!userPerformance[userId]) {
-        userPerformance[userId] = {
-          user_id: userId,
-          user_name: row.name,
-          tasks_assigned: 0,
-          tasks_completed: 0,
-          tasks: []
-        };
-      }
-      userPerformance[userId].tasks_assigned++;
-      if (row.task_status === 'completed') {
-        userPerformance[userId].tasks_completed++;
-      }
-      userPerformance[userId].tasks.push({
-        task_id: row.task_id,
-        task_title: row.task_title,
-        task_status: row.task_status,
-        project_name: row.project_name,
-        assigned_on: row.assigned_on,
-        completion_by: row.completion_by
-      });
-    });
-
-    const performanceData = Object.values(userPerformance);
-    const pagination = createPaginationMeta(pageNum, limitNum, totalCount);
-
-    await logUserAction(
-      req.user.id,
-      'Generated user performance report',
-      `Filters: ${JSON.stringify(req.query)}`
-    );
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      data: performanceData,
-      pagination,
-      filters: req.query
+      data: dataResult.rows,
+      pagination: {
+        current_page: page,
+        total_pages: totalPages,
+        total_items: total,
+        items_per_page: limit,
+        has_next: page < totalPages,
+        has_previous: page > 1
+      },
+      filters: {
+        user_id: loginUserId.toString(),
+        project_id: filters.project_id ? filters.project_id.toString() : "all",
+        status: filters.status || "all",
+        page: page.toString(),
+        limit: limit.toString()
+      }
     });
   } catch (error) {
-    next(error);
+    console.error("Get user performance report error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while fetching user performance report"
+    });
   }
 };
+
 
 /**
  * Get project status report with pagination

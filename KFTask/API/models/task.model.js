@@ -5,38 +5,41 @@ import db from '../config/db.js';
  * Handles database operations for the tasks table
  */
 const TaskModel = {
-  /**
-   * Create a new task
-   */
-  async create(taskData) {
-    const {
-      title,
-      project_id,
-      assignee_id,
-      status,
-      due_date,
-      created_by
-    } = taskData;
+/**
+ * Create a new task
+ */
+async create(taskData) {
+  const {
+    title,
+    project_id,
+    assignee_id,
+    status,
+    due_date,
+    created_by
+  } = taskData;
 
-    const query = `
-      INSERT INTO tasks 
-      (title, project_id, assignee_id, due_date, status, created_by)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
-    `;
+  const query = `
+    INSERT INTO tasks 
+    (title, project_id, assignee_id, due_date, status, created_by)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    RETURNING *
+  `;
 
-    const values = [
-      title,
-      project_id,
-      assignee_id,
-      due_date,
-      status,
-      created_by
-    ];
+  const values = [
+    title,
+    project_id || null,
+    assignee_id || null,
+    due_date || null,
+    status || 'in_progress',
+    created_by   
+  ];
 
-    const { rows } = await db.query(query, values);
-    return rows[0];
-  },
+  console.log('Creating task with values:', values);  
+  console.log('created_by value:', created_by); 
+
+  const { rows } = await db.query(query, values);
+  return rows[0];
+},
 
   /**
    * Find all tasks where user is assignee or creator (no filters)
