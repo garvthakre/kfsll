@@ -465,239 +465,147 @@ export const getProjectStatusReport = async (req, res, next) => {
  * @param {Function} next - Express next middleware function
  */
 export const getVendorPerformanceReport = async (req, res, next) => {
-  try {
-    const { 
-      vendor_id,
-      consultant_id,
-      start_date,
-      end_date,
-      task_status,
-      page = 1,
-      limit = 20
-    } = req.query;
-    
-    // Validate pagination parameters
-    const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
-    const offset = (pageNum - 1) * limitNum;
-    
-    // Initialize query parameters array
-    const queryParams = [];
-    
-    // Build base query for counting
-    let countQuery = `
-      SELECT COUNT(DISTINCT v.id) as total
-      FROM vendors v
-      LEFT JOIN users u ON v.user_id = u.id
-      LEFT JOIN projects p ON p.project_type LIKE '%Vendor - ' || v.company_name || '%'
-      LEFT JOIN users c ON c.working_for = v.user_id
-      LEFT JOIN consultants con ON con.user_id = c.id
-      LEFT JOIN task_assignments ta ON c.id = ta.user_id
-      LEFT JOIN tasks t ON ta.task_id = t.id
-      WHERE 1=1
-    `;
-    
-    // Build base query for vendor performance with user information
-    let query = `
-      SELECT 
-        v.id AS vendor_id,
-        v.company_name,
-        u.first_name,
-        u.last_name,
-        u.email,
-        u.status,
-        u.role,
-        COUNT(DISTINCT p.id) AS total_projects,
-        COUNT(DISTINCT c.id) AS total_consultants,
-        COUNT(t.id) AS total_tasks,
-        SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
-        SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_tasks,
-        SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END) AS pending_tasks,
-        SUM(CASE WHEN t.due_date < CURRENT_DATE AND t.status != 'completed' THEN 1 ELSE 0 END) AS overdue_tasks,
-        CASE 
-          WHEN COUNT(t.id) = 0 THEN 0 
-          ELSE ROUND((SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END)::numeric / COUNT(t.id)) * 100, 2)
-        END AS completion_rate,
-        ROUND(AVG(CASE WHEN t.status = 'completed' THEN 
-          EXTRACT(EPOCH FROM (t.updated_at - t.created_at))/3600/24 
-        ELSE NULL END), 2) AS avg_completion_days,
-        ROUND(AVG(CASE WHEN t.due_date IS NOT NULL AND t.status = 'completed' THEN 
-          EXTRACT(EPOCH FROM (t.due_date - t.updated_at))/3600/24 
-        ELSE NULL END), 2) AS avg_days_before_due
-      FROM vendors v
-      LEFT JOIN users u ON v.user_id = u.id
-      LEFT JOIN projects p ON p.project_type LIKE '%Vendor - ' || v.company_name || '%'
-      LEFT JOIN users c ON c.working_for = v.user_id
-      LEFT JOIN task_assignments ta ON c.id = ta.user_id
-      LEFT JOIN tasks t ON ta.task_id = t.id
-      WHERE 1=1
-    `;
-    
-    // Apply vendor filter (skip if 0 or 'all')
-    if (vendor_id && vendor_id !== '0' && vendor_id !== 'all') {
-      queryParams.push(vendor_id);
-      const filterClause = ` AND v.id = $${queryParams.length}`;
-      query += filterClause;
-      countQuery += filterClause;
-    }
-    
-    // Apply consultant filter (skip if 0 or 'all')
-    if (consultant_id && consultant_id !== '0' && consultant_id !== 'all') {
-      queryParams.push(consultant_id);
-      const filterClause = ` AND c.id = $${queryParams.length}`;
-      query += filterClause;
-      countQuery += filterClause;
-    }
-    
-    // Apply date filters
-    if (start_date) {
-      queryParams.push(start_date);
-      const filterClause = ` AND (t.created_at >= $${queryParams.length}::date OR t.created_at IS NULL)`;
-      query += filterClause;
-      countQuery += filterClause;
-    }
-    
-    if (end_date) {
-      queryParams.push(end_date);
-      const filterClause = ` AND (t.created_at <= $${queryParams.length}::date OR t.created_at IS NULL)`;
-      query += filterClause;
-      countQuery += filterClause;
-    }
-    
-    // Apply task status filter (skip if 'all')
-    if (task_status && task_status !== 'all') {
-      const statusArray = task_status.split(',').map(status => status.trim());
-      const statusPlaceholders = statusArray.map((_, index) => `$${queryParams.length + index + 1}`).join(',');
-      queryParams.push(...statusArray);
-      const statusFilterClause = ` AND (t.status IN (${statusPlaceholders}) OR t.status IS NULL)`;
-      query += statusFilterClause;
-      countQuery += statusFilterClause;
-    }
-    
-    // Get total count
-    const countResult = await db.query(countQuery, queryParams);
-    const totalCount = parseInt(countResult.rows[0].total);
-    
-    // Group, order by and add pagination to main query
-    query += ` 
-      GROUP BY v.id, v.company_name, u.first_name, u.last_name, u.email, u.status, u.role
-      ORDER BY v.company_name
-    `;
-    
-    queryParams.push(limitNum, offset);
-    query += ` LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length}`;
-    
-    // Execute main query
-    const result = await db.query(query, queryParams);
-    
-    // Get all vendor users for additional data (similar to getAllVendors)
-    const userVendorsResult = await db.query(`
-      SELECT id, first_name || ' ' || last_name AS name, email, status, role
-      FROM users
-      WHERE role = 'vendor'
-      ORDER BY id ASC
-    `);
-    const userVendors = userVendorsResult.rows;
-    
-    // For each vendor, get their consultants performance with the same filters
-    for (const vendor of result.rows) {
-      let consultantsQuery = `
-        SELECT 
-          u.id AS user_id,
-          u.first_name || ' ' || u.last_name AS user_name,
-          u.email,
-          COUNT(t.id) AS total_tasks,
-          SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks,
-          SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress_tasks,
-          SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END) AS pending_tasks,
-          SUM(CASE WHEN t.due_date < CURRENT_DATE AND t.status != 'completed' THEN 1 ELSE 0 END) AS overdue_tasks,
-          CASE 
-            WHEN COUNT(t.id) = 0 THEN 0 
-            ELSE ROUND((SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END)::numeric / COUNT(t.id)) * 100, 2)
-          END AS completion_rate,
-          ROUND(AVG(CASE WHEN t.status = 'completed' THEN 
-            EXTRACT(EPOCH FROM (t.updated_at - t.created_at))/3600/24 
-          ELSE NULL END), 2) AS avg_completion_days
+ try {
+     const vendorUserId = req.user.id;
+     const { consultant_id, task_status } = req.query;
+ 
+     // Verify vendor exists
+     const vendor = await db.query(
+       'SELECT id FROM users WHERE id = $1 AND role = $2',
+       [vendorUserId, 'vendor']
+     );
+ 
+     if (vendor.rows.length === 0) {
+       return res.status(404).json({
+         success: false,
+         message: 'Vendor profile not found for the logged-in user'
+       });
+     }
+ 
+     // Get all consultants for dropdown
+     const allConsultants = await db.query(
+       `SELECT u.id, u.first_name || ' ' || u.last_name AS name
         FROM users u
-        JOIN consultants c ON u.id = c.user_id
-        JOIN vendors v ON u.working_for = v.user_id
-        LEFT JOIN task_assignments ta ON u.id = ta.user_id
-        LEFT JOIN tasks t ON ta.task_id = t.id
-        WHERE v.id = $1
-      `;
-      
-      const consultantsParams = [vendor.vendor_id];
-      
-      // Apply consultant filter for individual consultant data (skip if 0 or 'all')
-      if (consultant_id && consultant_id !== '0' && consultant_id !== 'all') {
-        consultantsParams.push(consultant_id);
-        consultantsQuery += ` AND u.id = $${consultantsParams.length}`;
-      }
-      
-      // Apply date filters
-      if (start_date) {
-        consultantsParams.push(start_date);
-        consultantsQuery += ` AND (t.created_at >= $${consultantsParams.length}::date OR t.created_at IS NULL)`;
-      }
-      
-      if (end_date) {
-        consultantsParams.push(end_date);
-        consultantsQuery += ` AND (t.created_at <= $${consultantsParams.length}::date OR t.created_at IS NULL)`;
-      }
-      
-      // Apply task status filter (skip if 'all')
-      if (task_status && task_status !== 'all') {
-        const statusArray = task_status.split(',').map(status => status.trim());
-        const statusPlaceholders = statusArray.map((_, index) => `$${consultantsParams.length + index + 1}`).join(',');
-        consultantsParams.push(...statusArray);
-        consultantsQuery += ` AND (t.status IN (${statusPlaceholders}) OR t.status IS NULL)`;
-      }
-      
-      consultantsQuery += `
-        GROUP BY u.id, u.first_name, u.last_name, u.email, c.specialization
-        ORDER BY u.first_name, u.last_name
-        LIMIT 50
-      `;
-      
-      const consultantsResult = await db.query(consultantsQuery, consultantsParams);
-      vendor.consultants = consultantsResult.rows;
-    }
-    
-    // Calculate summary statistics (based on current page, not all data)
-    const summary = {
-      total_vendors: totalCount,
-      total_consultants: result.rows.reduce((sum, vendor) => sum + parseInt(vendor.total_consultants || 0), 0),
-      total_tasks: result.rows.reduce((sum, vendor) => sum + parseInt(vendor.total_tasks || 0), 0),
-      total_completed_tasks: result.rows.reduce((sum, vendor) => sum + parseInt(vendor.completed_tasks || 0), 0),
-      total_overdue_tasks: result.rows.reduce((sum, vendor) => sum + parseInt(vendor.overdue_tasks || 0), 0),
-      overall_completion_rate: result.rows.length > 0 ? 
-        Math.round((result.rows.reduce((sum, vendor) => sum + parseFloat(vendor.completion_rate || 0), 0) / result.rows.length) * 100) / 100 : 0
-    };
-    
-    // Create pagination metadata
-    const pagination = createPaginationMeta(pageNum, limitNum, totalCount);
-    
-    // Log this report access
-    await logUserAction(
-      req.user.id, 
-      'Generated vendor performance report', 
-      `Generated vendor performance report with filters: ${JSON.stringify(req.query)}`
-    );
-    
-    res.status(200).json({
-      success: true,
-      data: result.rows,
-      userVendors, // Added similar to getAllVendors
-      pagination,
-      summary,
-      filters: req.query,
-      generated_at: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('Error generating vendor performance report:', error);
-    next(error);
-  }
+        WHERE u.role = 'employee' AND u.working_for = $1
+        ORDER BY u.first_name, u.last_name`,
+       [vendorUserId]
+     );
+ 
+     // Base query for consultant performance
+     let consultantQuery = `
+       SELECT 
+         u.id,
+         u.first_name || ' ' || u.last_name AS consultant_name,
+         COUNT(DISTINCT p.id) as total_projects,
+         COUNT(t.id) as total_tasks,
+         COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
+         COUNT(CASE WHEN t.status = 'in-progress' THEN 1 END) as in_progress_tasks,
+         COUNT(CASE WHEN t.status = 'pending' THEN 1 END) as pending_tasks
+       FROM users u
+       LEFT JOIN task_assignments ta ON u.id = ta.user_id
+       LEFT JOIN tasks t ON ta.task_id = t.id
+       LEFT JOIN projects p ON t.project_id = p.id
+       WHERE u.role = 'employee' AND u.working_for = $1
+     `;
+ 
+     const queryParams = [vendorUserId];
+     let paramCount = 1;
+ 
+     // Add consultant filter if specified
+     if (consultant_id) {
+       paramCount++;
+       consultantQuery += ` AND u.id = $${paramCount}`;
+       queryParams.push(consultant_id);
+     }
+ 
+     consultantQuery += ` GROUP BY u.id, u.first_name, u.last_name ORDER BY u.first_name, u.last_name`;
+ 
+     const consultantStats = await db.query(consultantQuery, queryParams);
+ 
+     // Detailed task report query
+     let taskReportQuery = `
+       SELECT 
+         t.id as task_id,
+         t.title as task_title,
+         t.status,
+         t.due_date,
+         ta.assigned_at as assigned_date,
+         p.title as project_name,
+         u.id as consultant_id,
+         u.first_name || ' ' || u.last_name AS consultant_name
+       FROM tasks t
+       JOIN task_assignments ta ON t.id = ta.task_id
+       JOIN users u ON ta.user_id = u.id
+       JOIN projects p ON t.project_id = p.id
+       WHERE u.role = 'employee' AND u.working_for = $1
+     `;
+ 
+     const taskQueryParams = [vendorUserId];
+     let taskParamCount = 1;
+ 
+     // Add consultant filter
+     if (consultant_id) {
+       taskParamCount++;
+       taskReportQuery += ` AND u.id = $${taskParamCount}`;
+       taskQueryParams.push(consultant_id);
+     }
+ 
+     // Add task status filter
+     if (task_status && task_status !== 'all') {
+       taskParamCount++;
+       taskReportQuery += ` AND t.status = $${taskParamCount}`;
+       taskQueryParams.push(task_status);
+     }
+ 
+     taskReportQuery += ` ORDER BY t.due_date DESC, ta.assigned_at DESC`;
+ 
+     const taskReport = await db.query(taskReportQuery, taskQueryParams);
+ 
+     // Get project summary
+     let projectQuery = `
+       SELECT DISTINCT
+         p.id,
+         p.title as project_name,
+         p.status as project_status,
+         p.start_date,
+         p.end_date,
+         u.first_name || ' ' || u.last_name AS consultant_name
+       FROM projects p
+       JOIN tasks t ON p.id = t.project_id
+       JOIN task_assignments ta ON t.id = ta.task_id
+       JOIN users u ON ta.user_id = u.id
+       WHERE u.role = 'employee' AND u.working_for = $1
+     `;
+ 
+     const projectQueryParams = [vendorUserId];
+     let projectParamCount = 1;
+ 
+     if (consultant_id) {
+       projectParamCount++;
+       projectQuery += ` AND u.id = $${projectParamCount}`;
+       projectQueryParams.push(consultant_id);
+     }
+ 
+     projectQuery += ` ORDER BY p.start_date DESC`;
+ 
+     const projectReport = await db.query(projectQuery, projectQueryParams);
+ 
+     res.status(200).json({
+       success: true,
+       data: {
+         consultants: allConsultants.rows,
+         consultant_stats: consultantStats.rows,
+         task_report: taskReport.rows,
+         project_report: projectReport.rows,
+         filters: {
+           selected_consultant: consultant_id || null,
+           selected_status: task_status || 'all'
+         }
+       }
+     });
+   } catch (error) {
+     next(error);
+   }
 };
 
 /**

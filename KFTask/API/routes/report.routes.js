@@ -253,62 +253,29 @@ router.get(
  *         description: Server error
  */
 router.get('/project-status', authenticateToken, getProjectStatusReport);
-
 /**
  * @swagger
  * /api/reports/vendor-performance:
  *   get:
- *     summary: Get vendor performance report with filtering and pagination
+ *     summary: Get vendor performance report with consultant filtering
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: vendor_id
- *         schema:
- *           type: integer
- *         description: Filter by vendor ID
- *       - in: query
  *         name: consultant_id
  *         schema:
  *           type: integer
- *         description: Filter by consultant ID
- *       - in: query
- *         name: start_date
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by start date (YYYY-MM-DD)
- *       - in: query
- *         name: end_date
- *         schema:
- *           type: string
- *           format: date
- *         description: Filter by end date (YYYY-MM-DD)
+ *         description: Filter by specific consultant ID
  *       - in: query
  *         name: task_status
  *         schema:
  *           type: string
- *         description: Filter by task status (comma-separated for multiple statuses, e.g., "completed,in_progress")
- *         example: "completed,in_progress,pending"
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           minimum: 1
- *           default: 1
- *         description: Page number for pagination
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           minimum: 1
- *           maximum: 100
- *           default: 20
- *         description: Number of items per page
+ *           enum: [all, completed, in-progress, pending]
+ *         description: Filter by task status
  *     responses:
  *       200:
- *         description: Vendor performance report retrieved successfully
+ *         description: Performance report retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -317,103 +284,31 @@ router.get('/project-status', authenticateToken, getProjectStatusReport);
  *                 success:
  *                   type: boolean
  *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       vendor_id:
- *                         type: integer
- *                       company_name:
- *                         type: string
- *                       total_projects:
- *                         type: integer
- *                       total_consultants:
- *                         type: integer
- *                       total_tasks:
- *                         type: integer
- *                       completed_tasks:
- *                         type: integer
- *                       in_progress_tasks:
- *                         type: integer
- *                       pending_tasks:
- *                         type: integer
- *                       overdue_tasks:
- *                         type: integer
- *                       completion_rate:
- *                         type: number
- *                       avg_completion_days:
- *                         type: number
- *                       avg_days_before_due:
- *                         type: number
- *                       consultants:
- *                         type: array
- *                         items:
- *                           type: object
- *                           properties:
- *                             user_id:
- *                               type: integer
- *                             user_name:
- *                               type: string
- *                             email:
- *                               type: string
- *                             specialization:
- *                               type: string
- *                             total_tasks:
- *                               type: integer
- *                             completed_tasks:
- *                               type: integer
- *                             in_progress_tasks:
- *                               type: integer
- *                             pending_tasks:
- *                               type: integer
- *                             overdue_tasks:
- *                               type: integer
- *                             completion_rate:
- *                               type: number
- *                             avg_completion_days:
- *                               type: number
- *                 pagination:
  *                   type: object
  *                   properties:
- *                     current_page:
- *                       type: integer
- *                     total_pages:
- *                       type: integer
- *                     total_items:
- *                       type: integer
- *                     items_per_page:
- *                       type: integer
- *                     has_next:
- *                       type: boolean
- *                     has_previous:
- *                       type: boolean
- *                 summary:
- *                   type: object
- *                   properties:
- *                     total_vendors:
- *                       type: integer
- *                     total_consultants:
- *                       type: integer
- *                     total_tasks:
- *                       type: integer
- *                     total_completed_tasks:
- *                       type: integer
- *                     total_overdue_tasks:
- *                       type: integer
- *                     overall_completion_rate:
- *                       type: number
- *                 filters:
- *                   type: object
- *                 generated_at:
- *                   type: string
- *                   format: date-time
+ *                     consultants:
+ *                       type: array
+ *                       description: All consultants for dropdown
+ *                     consultant_stats:
+ *                       type: array
+ *                       description: Summary statistics per consultant
+ *                     task_report:
+ *                       type: array
+ *                       description: Detailed task information
+ *                     project_report:
+ *                       type: array
+ *                       description: Project information
+ *                     filters:
+ *                       type: object
+ *                       description: Applied filters
  *       401:
  *         description: Unauthorized
+ *       404:
+ *         description: Vendor profile not found
  *       500:
  *         description: Server error
- * 
  */
-router.get('/vendor-performance', authenticateToken, authorize(['admin','vendor']), getVendorPerformanceReport);
+router.get('/vendor-performance', authenticateToken,  getVendorPerformanceReport);
 
 /**
  * @swagger

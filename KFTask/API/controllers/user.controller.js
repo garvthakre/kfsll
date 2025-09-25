@@ -519,7 +519,7 @@ async getDashboardOverview(req, res) {
     return res.status(200).json({
       success: true,
       data: {
-        totalUsers:totalUsers-1,
+        totalUsers:totalUsers,
         activeProjects,
         pendingTasks
       }
