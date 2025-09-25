@@ -163,14 +163,14 @@ async getAllTaskIdsAndTitles(req, res) {
         due_date,
        
       } = req.body;
-       let taskStatus = 'in_progress';
+       let taskStatus = status || 'in_progress';
       // Check if project exists
       if (project_id) {
         const project = await ProjectModel.findById(project_id);
         if (!project) {
           return res.status(400).json({ message: 'Project not found' });
         }
-         taskStatus = project.status;
+        //  taskStatus = project.status;
       }
 
       // Create task
