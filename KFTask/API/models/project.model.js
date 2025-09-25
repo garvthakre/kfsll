@@ -10,45 +10,50 @@ const ProjectModel = {
    * @param {Object} projectData - Project information
    * @returns {Promise<Object>} - New project object
    */
-  async create(projectData) {
-    const {
-      title,
-      description,
-     
-      start_date,
-      end_date,
-      status,
-      budget,
-      manager_id,
-      department,
-      priority,
-      project_type // Added project_type
-    } = projectData;
+/**
+ * Create a new project
+ * @param {Object} projectData - Project information
+ * @returns {Promise<Object>} - New project object
+ */
+async create(projectData) {
+  const {
+    title,
+    description,
+    client_id,  // Added client_id
+    start_date,
+    end_date,
+    status,
+    budget,
+    manager_id,
+    department,
+    priority,
+    project_type
+  } = projectData;
 
-    const query = `
-      INSERT INTO projects 
-      (title, description,  start_date, end_date, status, budget, manager_id, department, priority, project_type)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10  )
-      RETURNING *
-    `;
+  const query = `
+    INSERT INTO projects 
+    (title, description, client_id, start_date, end_date, status, budget, manager_id, department, priority, project_type)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    RETURNING *
+  `;
 
-    const values = [
-      title,
-      description,
- 
-      start_date,
-      end_date,
-      status || 'planning',
-      budget || 0,
-      manager_id,
-      department,
-      priority || 'medium',
-      project_type // Added project_type
-    ];
+  const values = [
+    title,
+    description,
+    client_id || null,   
+    start_date,
+    end_date,
+    status || 'planning',
+    budget || 0,
+    manager_id,
+    department,
+    priority || 'medium',
+    project_type
+  ];
 
-    const { rows } = await db.query(query, values);
-    return rows[0];
-  },
+  const { rows } = await db.query(query, values);
+  return rows[0];
+},
 /**
  * Get all projects with only id and title (name), no filters or pagination
  * @returns {Promise<Array>} - Array of projects with id and title

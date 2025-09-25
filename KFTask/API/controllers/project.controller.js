@@ -102,82 +102,84 @@ async getAllProjectIdsAndTitles(req, res) {
    * @param {Object} res - Express response object
    * @returns {Object} - New project details
    */
-  async createProject(req, res) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
+/**
+ * Create a new project
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - New project details
+ */
+async createProject(req, res) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-      const {
+    const {
+      title,
+      description,
+      client_id,  // Added client_id
+      start_date,
+      end_date,
+      status,
+      budget,
+      manager_id,
+      department,
+      priority,
+      project_type,
+    } = req.body;
+
+    // Create transaction
+    const client = await db.pool.connect();
+    
+    try {
+      // Start transaction
+      await client.query('BEGIN');
+
+      // Create project
+      const newProject = await ProjectModel.create({
         title,
         description,
-        client_id,
+        client_id,  // Added client_id
         start_date,
         end_date,
         status,
         budget,
-        manager_id,
+        manager_id: manager_id || req.user.id, // Default to current user if not specified
         department,
         priority,
-        project_type, // Added project_type
-        
-      } = req.body;
+        project_type
+      });
 
-      // Create transaction
-      const client = await db.pool.connect();
-      
-      try {
-        // Start transaction
-        await client.query('BEGIN');
+      // Log project creation
+      await client.query(
+        'INSERT INTO project_logs (project_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
+        [newProject.id, req.user.id, 'create', `Project "${title}" created`]
+      );
 
-        // Create project
-        const newProject = await ProjectModel.create({
-          title,
-          description,
-          
-          start_date,
-          end_date,
-          status,
-          budget,
-          manager_id: manager_id || req.user.id, // Default to current user if not specified
-          department,
-          priority,
-          project_type // Added project_type
-        });
+      // Commit transaction
+      await client.query('COMMIT');
 
-      
+      // Get updated project with team members
+      const project = await ProjectModel.findById(newProject.id);
 
-        // Log project creation
-        await client.query(
-          'INSERT INTO project_logs (project_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
-          [newProject.id, req.user.id, 'create', `Project "${title}" created`]
-        );
-
-        // Commit transaction
-        await client.query('COMMIT');
-
-        // Get updated project with team members
-        const project = await ProjectModel.findById(newProject.id);
-        
-
-        return res.status(201).json({
-          message: 'Project created successfully',
-          project
-        });
-      } catch (err) {
-        // Rollback transaction on error
-        await client.query('ROLLBACK');
-        throw err;
-      } finally {
-        // Release client
-        client.release();
-      }
-    } catch (error) {
-      console.error('Create project error:', error);
-      return res.status(500).json({ message: 'Server error while creating project' });
+      return res.status(201).json({
+        message: 'Project created successfully',
+        project
+      });
+    } catch (err) {
+      // Rollback transaction on error
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      // Release client
+      client.release();
     }
-  },
+  } catch (error) {
+    console.error('Create project error:', error);
+    return res.status(500).json({ message: 'Server error while creating project' });
+  }
+},
 
 /**
  * Update a project (Simplified version - similar to create)

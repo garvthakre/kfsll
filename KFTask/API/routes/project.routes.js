@@ -118,6 +118,11 @@ const router = express.Router();
  *           description: Project title
  *           minLength: 1
  *           maxLength: 255
+ *         client_id:
+ *           type: integer
+ *           description: Client ID (optional)
+ *           minimum: 1
+ *           nullable: true
  *         start_date:
  *           type: string
  *           format: date
@@ -688,7 +693,7 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  * /api/projects:
  *   post:
  *     summary: Create a new project
- *     description: Create a new project with only essential fields - title, start date, end date, project type, and status
+ *     description: Create a new project with essential fields - title, start date, end date, project type, status, and optional client ID
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -699,33 +704,44 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  *           schema:
  *             $ref: '#/components/schemas/CreateProjectRequest'
  *           examples:
- *             web_development:
- *               summary: Web Development Project
- *               description: Example of creating a web development project
+ *             web_development_with_client:
+ *               summary: Web Development Project with Client
+ *               description: Example of creating a web development project with a specific client
  *               value:
  *                 title: "E-commerce Website"
+ *                 client_id: 3
  *                 start_date: "2024-01-15"
  *                 end_date: "2024-06-15"
  *                 project_type: "web_development"
  *                 status: "planning"
- *             mobile_app:
- *               summary: Mobile App Project
- *               description: Example of creating a mobile application project
+ *             mobile_app_without_client:
+ *               summary: Mobile App Project without Client
+ *               description: Example of creating a mobile application project without specifying a client
  *               value:
  *                 title: "Task Management App"
  *                 start_date: "2024-02-01"
  *                 end_date: "2024-08-01"
  *                 project_type: "mobile_app"
  *                 status: "planning"
- *             consulting:
- *               summary: Consulting Project
- *               description: Example of creating a consulting project
+ *             consulting_with_client:
+ *               summary: Consulting Project with Client
+ *               description: Example of creating a consulting project with client assignment
  *               value:
  *                 title: "Digital Transformation Strategy"
+ *                 client_id: 7
  *                 start_date: "2024-03-01"
  *                 end_date: "2024-05-01"
  *                 project_type: "consulting"
  *                 status: "in_progress"
+ *             internal_project:
+ *               summary: Internal Project
+ *               description: Example of creating an internal project without client
+ *               value:
+ *                 title: "Company Website Redesign"
+ *                 start_date: "2024-04-01"
+ *                 end_date: "2024-07-01"
+ *                 project_type: "internal"
+ *                 status: "planning"
  *     responses:
  *       201:
  *         description: Project created successfully
@@ -739,6 +755,55 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  *                   example: "Project created successfully"
  *                 project:
  *                   $ref: '#/components/schemas/Project'
+ *             examples:
+ *               with_client:
+ *                 summary: Project Created with Client
+ *                 description: Response when project is created with client assigned
+ *                 value:
+ *                   message: "Project created successfully"
+ *                   project:
+ *                     id: 1
+ *                     title: "E-commerce Website"
+ *                     description: null
+ *                     client_id: 3
+ *                     client_name: "John Smith"
+ *                     start_date: "2024-01-15"
+ *                     end_date: "2024-06-15"
+ *                     status: "planning"
+ *                     budget: 0
+ *                     manager_id: 5
+ *                     manager_name: "Jane Doe"
+ *                     department: null
+ *                     priority: "medium"
+ *                     project_type: "web_development"
+ *                     task_count: 0
+ *                     completed_tasks: 0
+ *                     created_at: "2024-01-15T10:30:00Z"
+ *                     updated_at: "2024-01-15T10:30:00Z"
+ *               without_client:
+ *                 summary: Project Created without Client
+ *                 description: Response when project is created without client
+ *                 value:
+ *                   message: "Project created successfully"
+ *                   project:
+ *                     id: 2
+ *                     title: "Task Management App"
+ *                     description: null
+ *                     client_id: null
+ *                     client_name: null
+ *                     start_date: "2024-02-01"
+ *                     end_date: "2024-08-01"
+ *                     status: "planning"
+ *                     budget: 0
+ *                     manager_id: 5
+ *                     manager_name: "Jane Doe"
+ *                     department: null
+ *                     priority: "medium"
+ *                     project_type: "mobile_app"
+ *                     task_count: 0
+ *                     completed_tasks: 0
+ *                     created_at: "2024-01-15T11:00:00Z"
+ *                     updated_at: "2024-01-15T11:00:00Z"
  *       400:
  *         description: Validation error
  *         content:
@@ -755,24 +820,34 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  *                         type: string
  *                       message:
  *                         type: string
- *             example:
- *               errors:
- *                 - field: "title"
- *                   message: "Title is required"
- *                 - field: "start_date"
- *                   message: "Start date is required"
+ *             examples:
+ *               validation_errors:
+ *                 summary: Validation Errors
+ *                 description: Example of validation errors when required fields are missing or invalid
+ *                 value:
+ *                   errors:
+ *                     - field: "title"
+ *                       message: "Title is required"
+ *                     - field: "start_date"
+ *                       message: "Start date is required"
+ *                     - field: "client_id"
+ *                       message: "Client ID must be a positive integer"
  *       401:
  *         description: Not authenticated
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               message: "Access token is required"
  *       500:
  *         description: Server error
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               message: "Server error while creating project"
  */
 router.post('/', [
   authenticateToken,
@@ -781,6 +856,10 @@ router.post('/', [
     .withMessage('Title is required')
     .isLength({ min: 1, max: 255 })
     .withMessage('Title must be between 1 and 255 characters'),
+  check('client_id')
+    .optional({ nullable: true })
+    .isInt({ min: 1 })
+    .withMessage('Client ID must be a positive integer'),
   check('start_date')
     .notEmpty()
     .withMessage('Start date is required')
