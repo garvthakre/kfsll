@@ -532,7 +532,143 @@ router.get('/my', authenticateToken, TaskController.getMyTasks);
  *         description: Server error
  */
 router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDTITLES);
+ 
 
+/**
+ * @swagger
+ * /api/tasks/daily-updates:
+ *   get:
+ *     summary: Get all tasks with daily updates and filters
+ *     description: Retrieve all tasks that have daily updates with project info, creator info, and comprehensive filtering options. Use limit=0 or limit=all to get all results without pagination.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: string
+ *           default: "10"
+ *         description: Number of results per page. Use 0 or "all" to get all results without pagination
+ *         example: "10"
+ *       - in: query
+ *         name: task_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by specific task ID
+ *         example: 123
+ *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by project ID
+ *         example: 456
+ *       - in: query
+ *         name: created_by
+ *         schema:
+ *           type: integer
+ *         description: Filter by task creator's user ID
+ *         example: 789
+ *       - in: query
+ *         name: update_date_start
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter daily updates from this date onwards
+ *         example: "2024-01-01"
+ *       - in: query
+ *         name: update_date_end
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter daily updates up to this date
+ *         example: "2024-01-31"
+ *     responses:
+ *       200:
+ *         description: List of tasks with daily updates
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: Task ID
+ *                         example: 123
+ *                       title:
+ *                         type: string
+ *                         description: Task title
+ *                         example: "Complete project documentation"
+ *                       project_id:
+ *                         type: integer
+ *                         description: Project ID
+ *                         example: 456
+ *                       project_name:
+ *                         type: string
+ *                         description: Project name
+ *                         example: "Website Development"
+ *                       created_by:
+ *                         type: integer
+ *                         description: Creator user ID
+ *                         example: 789
+ *                       created_by_name:
+ *                         type: string
+ *                         description: Creator name
+ *                         example: "John Doe"
+ *                       status:
+ *                         type: string
+ *                         description: Task status
+ *                         example: "in_progress"
+ *                       due_date:
+ *                         type: string
+ *                         format: date
+ *                         description: Task due date
+ *                         example: "2024-02-15"
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Task creation date
+ *                       updated_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: Last update date
+ *                       daily_updates_count:
+ *                         type: integer
+ *                         description: Number of daily updates for this task
+ *                         example: 5
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 25
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     pages:
+ *                       type: integer
+ *                       example: 3
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/daily-updates', authenticateToken, TaskController.getAllTasksWithDailyUpdates);
 /**
  * @swagger
  * /api/tasks/ids-titles:

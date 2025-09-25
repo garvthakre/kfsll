@@ -389,7 +389,124 @@ const countQuery = `
     const { rows } = await db.query(query, queryParams);
     return parseInt(rows[0].count);
   },
+// Add these methods to your TaskModel in task.model.js
 
+/**
+ * Find all tasks that have daily updates with pagination and filters
+ */
+async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
+  let query = `
+    SELECT DISTINCT t.id,
+      t.title,
+      t.project_id,
+      p.title as project_name,
+      t.created_by,
+      c.first_name || ' ' || c.last_name as created_by_name,
+      t.status,
+      t.due_date,
+      t.created_at,
+      t.updated_at,
+      (SELECT COUNT(*) FROM daily_updates WHERE task_id = t.id) as daily_updates_count
+    FROM tasks t
+    LEFT JOIN projects p ON t.project_id = p.id
+    LEFT JOIN users c ON t.created_by = c.id
+    INNER JOIN daily_updates du ON t.id = du.task_id
+    WHERE 1=1
+  `;
+  
+  const queryParams = [];
+  let paramIndex = 1;
+
+  // Add filters to query
+  if (filters.task_id) {
+    query += ` AND t.id = $${paramIndex}`;
+    queryParams.push(filters.task_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.created_by) {
+    query += ` AND t.created_by = $${paramIndex}`;
+    queryParams.push(filters.created_by);
+    paramIndex++;
+  }
+
+  if (filters.update_date_start) {
+    query += ` AND du.update_date >= $${paramIndex}`;
+    queryParams.push(filters.update_date_start);
+    paramIndex++;
+  }
+
+  if (filters.update_date_end) {
+    query += ` AND du.update_date <= $${paramIndex}`;
+    queryParams.push(filters.update_date_end);
+    paramIndex++;
+  }
+
+  // Add sorting
+  query += ' ORDER BY t.updated_at DESC';
+
+  // Add pagination
+  query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  queryParams.push(limit, offset);
+
+  const { rows } = await db.query(query, queryParams);
+  return rows;
+},
+
+/**
+ * Count total tasks that have daily updates with filters
+ */
+async countTotalWithDailyUpdates(filters = {}) {
+  let query = `
+    SELECT COUNT(DISTINCT t.id) as total
+    FROM tasks t
+    INNER JOIN daily_updates du ON t.id = du.task_id
+    WHERE 1=1
+  `;
+  
+  const queryParams = [];
+  let paramIndex = 1;
+
+  // Add filters to query
+  if (filters.task_id) {
+    query += ` AND t.id = $${paramIndex}`;
+    queryParams.push(filters.task_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.created_by) {
+    query += ` AND t.created_by = $${paramIndex}`;
+    queryParams.push(filters.created_by);
+    paramIndex++;
+  }
+
+  if (filters.update_date_start) {
+    query += ` AND du.update_date >= $${paramIndex}`;
+    queryParams.push(filters.update_date_start);
+    paramIndex++;
+  }
+
+  if (filters.update_date_end) {
+    query += ` AND du.update_date <= $${paramIndex}`;
+    queryParams.push(filters.update_date_end);
+    paramIndex++;
+  }
+
+  const { rows } = await db.query(query, queryParams);
+  return parseInt(rows[0].total);
+},
   /**
    * Add a comment to a task
    */
