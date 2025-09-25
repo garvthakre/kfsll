@@ -449,10 +449,10 @@ const countQuery = `
     return rows;
   },
 
-  /**
-   * Add daily update to task
-   */
-  async addDailyUpdate(updateData) {
+ /**
+ * Add daily update to task (Updated to handle verification statuses)
+ */
+async addDailyUpdate(updateData) {
   const { task_id, user_id, content, update_date, status } = updateData;
 
   const query = `
@@ -466,7 +466,7 @@ const countQuery = `
     user_id,
     content,
     update_date || new Date(),
-    status || null
+    status || 'new'  
   ];
 
   const { rows } = await db.query(query, values);

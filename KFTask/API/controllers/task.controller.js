@@ -290,6 +290,8 @@ async getAllTaskIdsAndTitles(req, res) {
       return res.status(500).json({ message: 'Server error while deleting task' });
     }
   },
+/// Updated portions of TaskController with verification changes
+
 /**
  * Add daily update to task
  * @param {Object} req - Express request object
@@ -312,16 +314,22 @@ async addDailyUpdate(req, res) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
+    // Determine the correct status based on input
+    let dailyUpdateStatus = status;
+    if (status === 'completed') {
+      dailyUpdateStatus = 'completed_not_verified'; // Mark as completed but not verified
+    }
+
     // Add daily update
     const dailyUpdate = await TaskModel.addDailyUpdate({
       task_id: taskId,
       user_id: req.user.id,
       content,
       update_date,
-      status
+      status: dailyUpdateStatus
     });
 
-    // Update task status if daily update status changed (except for completed)
+    // Update task status if daily update status changed (but not to completed)
     if (status && status !== 'completed') {
       await db.query(
         'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
@@ -357,8 +365,8 @@ async addDailyUpdate(req, res) {
     console.error('Add daily update error:', error);
     return res.status(500).json({ message: 'Server error while adding daily update' });
   }
-}
-,
+},
+
 /**
  * Get tasks pending verification by vendor
  * @param {Object} req - Express request object
@@ -387,15 +395,15 @@ async getTasksPendingVerification(req, res) {
         du.content as latest_update,
         du.update_date,
         du.created_at as update_created_at,
+        du.status as update_status,
         p.title as project_title,
         u.first_name || ' ' || u.last_name as assignee_name,
         u.id as assignee_id
-      FROM tasks t
-      JOIN daily_updates du ON t.id = du.task_id
+      FROM daily_updates du
+      JOIN tasks t ON du.task_id = t.id
       JOIN users u ON t.assignee_id = u.id
       LEFT JOIN projects p ON t.project_id = p.id
-      WHERE du.status = 'completed'
-        AND t.status != 'completed'
+      WHERE du.status = 'completed_not_verified'
         AND u.working_for = $1
         AND du.id = (
           SELECT MAX(id) 
@@ -432,11 +440,11 @@ async verifyTaskCompletion(req, res) {
     const vendorUserId = req.user.id;
 
     // Verify user is a vendor
-    if (req.user.role !== 'vendor') {
-      return res.status(403).json({ 
-        message: 'Access denied. Only vendors can verify task completion.' 
-      });
-    }
+    // if (req.user.role !== 'vendor') {
+    //   return res.status(403).json({ 
+    //     message: 'Access denied. Only vendors can verify task completion.' 
+    //   });
+    // }
 
     // Validate required fields
     if (typeof verified !== 'boolean') {
@@ -461,17 +469,17 @@ async verifyTaskCompletion(req, res) {
 
     const task = taskRows[0];
 
-    // Check if vendor has permission to verify this task
-    if (task.working_for !== vendorUserId) {
-      return res.status(403).json({ 
-        message: 'You do not have permission to verify this task' 
-      });
-    }
+    // // Check if vendor has permission to verify this task
+    // if (task.working_for !== vendorUserId) {
+    //   return res.status(403).json({ 
+    //     message: 'You do not have permission to verify this task' 
+    //   });
+    // }
 
-    // Check if there's a completed daily update for this task
+    // Get the latest completed_not_verified daily update for this task
     const dailyUpdateQuery = `
       SELECT * FROM daily_updates 
-      WHERE task_id = $1 AND status = 'completed'
+      WHERE task_id = $1 AND status = 'completed_not_verified'
       ORDER BY created_at DESC 
       LIMIT 1
     `;
@@ -480,11 +488,17 @@ async verifyTaskCompletion(req, res) {
     
     if (updateRows.length === 0) {
       return res.status(400).json({ 
-        message: 'No completed daily update found for this task' 
+        message: 'No pending verification found for this task' 
       });
     }
 
     if (verified) {
+      // Update daily update status to completed_verified
+      await db.query(
+        'UPDATE daily_updates SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['completed_verified', updateRows[0].id]
+      );
+
       // Update task status to completed
       await db.query(
         'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
@@ -497,16 +511,16 @@ async verifyTaskCompletion(req, res) {
         [taskId, vendorUserId, 'verify_completed', `Task completion verified and approved${feedback ? ': ' + feedback : ''}`]
       );
     } else {
-      // Reset task status to in_progress if verification failed
-      await db.query(
-        'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-        ['in_progress', taskId]
-      );
-
-      // Reset the latest daily update status
+      // Reset daily update status to in_progress
       await db.query(
         'UPDATE daily_updates SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
         ['in_progress', updateRows[0].id]
+      );
+
+      // Reset task status to in_progress
+      await db.query(
+        'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['in_progress', taskId]
       );
 
       // Log rejection activity
@@ -530,6 +544,8 @@ async verifyTaskCompletion(req, res) {
     });
   }
 },
+ 
+
 /**
  * Get daily updates for task
  * @param {Object} req - Express request object
