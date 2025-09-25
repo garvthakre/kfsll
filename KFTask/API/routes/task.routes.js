@@ -14,6 +14,71 @@ const router = express.Router();
  * @swagger
  * components:
  *   schemas:
+ *     VerifyTaskRequest:
+ *       type: object
+ *       required:
+ *         - verified
+ *       properties:
+ *         verified:
+ *           type: boolean
+ *           description: Whether to approve (true) or reject (false) the task completion
+ *           example: true
+ *         feedback:
+ *           type: string
+ *           description: Optional feedback message from vendor
+ *           example: "Good work, task completed as expected"
+ *     PendingVerificationTask:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Task ID
+ *           example: 1
+ *         title:
+ *           type: string
+ *           description: Task title
+ *           example: "Complete project documentation"
+ *         project_id:
+ *           type: integer
+ *           description: Project ID
+ *           example: 1
+ *         project_title:
+ *           type: string
+ *           description: Project title
+ *           example: "Website Development"
+ *         due_date:
+ *           type: string
+ *           format: date
+ *           description: Task due date
+ *           example: "2024-12-31"
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *           description: Task creation date
+ *         daily_update_id:
+ *           type: integer
+ *           description: Latest daily update ID
+ *           example: 15
+ *         latest_update:
+ *           type: string
+ *           description: Content of latest daily update
+ *           example: "Task completed successfully"
+ *         update_date:
+ *           type: string
+ *           format: date
+ *           description: Date of latest update
+ *         update_created_at:
+ *           type: string
+ *           format: date-time
+ *           description: When the update was created
+ *         assignee_name:
+ *           type: string
+ *           description: Name of task assignee
+ *           example: "John Doe"
+ *         assignee_id:
+ *           type: integer
+ *           description: ID of task assignee
+ *           example: 5
  *     Task:
  *       type: object
  *       properties:
@@ -334,6 +399,38 @@ const router = express.Router();
  */
 router.get('/stats', authenticateToken, TaskController.getTaskStats);
 
+/**
+ * @swagger
+ * /api/tasks/pending-verification:
+ *   get:
+ *     summary: Get tasks pending verification by vendor
+ *     description: Retrieve tasks where consultants have marked daily updates as completed but vendor hasn't verified yet. Only accessible by vendors.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Tasks pending vendor verification
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Tasks pending verification retrieved successfully"
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PendingVerificationTask'
+ *       403:
+ *         description: Access denied - only vendors can access this resource
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/pending-verification', authenticateToken, TaskController.getTasksPendingVerification);
 /**
  * @swagger
  * /api/tasks/my:
@@ -720,6 +817,68 @@ router.get('/', authenticateToken, TaskController.getAllTasks);
  */
 router.get('/:id', authenticateToken, TaskController.getTaskById);
 
+/**
+ * @swagger
+ * /api/tasks/{id}/verify:
+ *   put:
+ *     summary: Verify task completion by vendor
+ *     description: Allow vendors to approve or reject task completion based on consultant's daily update. Only accessible by vendors.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Task ID to verify
+ *         example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/VerifyTaskRequest'
+ *     responses:
+ *       200:
+ *         description: Task verification completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Task completion verified successfully"
+ *                 task_id:
+ *                   type: integer
+ *                   description: Task ID that was verified
+ *                   example: 1
+ *                 verified:
+ *                   type: boolean
+ *                   description: Verification result
+ *                   example: true
+ *                 feedback:
+ *                   type: string
+ *                   description: Vendor feedback
+ *                   example: "Good work, task completed as expected"
+ *       400:
+ *         description: Validation error or no completed daily update found
+ *       403:
+ *         description: Access denied - only vendors can verify tasks or no permission for this specific task
+ *       404:
+ *         description: Task not found
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.put('/:id/verify', [
+  authenticateToken,
+  check('verified').isBoolean().withMessage('Verified field is required and must be boolean'),
+  check('feedback').optional().isString().withMessage('Feedback must be a string')
+], TaskController.verifyTaskCompletion);
 /**
  * @swagger
  * /api/tasks:

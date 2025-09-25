@@ -304,7 +304,7 @@ async addDailyUpdate(req, res) {
     }
 
     const taskId = parseInt(req.params.id);
-    const { content, update_date,status } = req.body;
+    const { content, update_date, status } = req.body;
 
     // Check if task exists
     const task = await TaskModel.findById(taskId);
@@ -321,6 +321,14 @@ async addDailyUpdate(req, res) {
       status
     });
 
+    // Update task status if daily update status changed (except for completed)
+    if (status && status !== 'completed') {
+      await db.query(
+        'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [status, taskId]
+      );
+    }
+
     // Get user details for response
     const { rows } = await db.query(
       'SELECT first_name || \' \' || last_name as user_name, profile_image FROM users WHERE id = $1',
@@ -331,21 +339,197 @@ async addDailyUpdate(req, res) {
     dailyUpdate.profile_image = rows[0].profile_image;
 
     // Log daily update activity
+    const logDescription = status === 'completed' 
+      ? 'Added daily update - task marked completed (pending verification)'
+      : `Added daily update - task status updated to ${status}`;
+
     await db.query(
       'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
-      [taskId, req.user.id, 'daily_update', 'Added a daily update to task']
+      [taskId, req.user.id, 'daily_update', logDescription]
     );
 
     return res.status(201).json({
       message: 'Daily update added successfully',
-      daily_update: dailyUpdate
+      daily_update: dailyUpdate,
+      task_status_updated: status && status !== 'completed'
     });
   } catch (error) {
     console.error('Add daily update error:', error);
     return res.status(500).json({ message: 'Server error while adding daily update' });
   }
+}
+,
+/**
+ * Get tasks pending verification by vendor
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of tasks pending verification
+ */
+async getTasksPendingVerification(req, res) {
+  try {
+    const vendorUserId = req.user.id;
+    
+    // Verify user is a vendor
+    if (req.user.role !== 'vendor') {
+      return res.status(403).json({ 
+        message: 'Access denied. Only vendors can access this resource.' 
+      });
+    }
+
+    const query = `
+      SELECT 
+        t.id,
+        t.title,
+        t.project_id,
+        t.due_date,
+        t.created_at,
+        du.id as daily_update_id,
+        du.content as latest_update,
+        du.update_date,
+        du.created_at as update_created_at,
+        p.title as project_title,
+        u.first_name || ' ' || u.last_name as assignee_name,
+        u.id as assignee_id
+      FROM tasks t
+      JOIN daily_updates du ON t.id = du.task_id
+      JOIN users u ON t.assignee_id = u.id
+      LEFT JOIN projects p ON t.project_id = p.id
+      WHERE du.status = 'completed'
+        AND t.status != 'completed'
+        AND u.working_for = $1
+        AND du.id = (
+          SELECT MAX(id) 
+          FROM daily_updates du2 
+          WHERE du2.task_id = t.id
+        )
+      ORDER BY du.created_at DESC
+    `;
+
+    const { rows } = await db.query(query, [vendorUserId]);
+    
+    return res.status(200).json({
+      message: 'Tasks pending verification retrieved successfully',
+      tasks: rows
+    });
+  } catch (error) {
+    console.error('Get tasks pending verification error:', error);
+    return res.status(500).json({ 
+      message: 'Server error while fetching tasks pending verification' 
+    });
+  }
 },
 
+/**
+ * Verify task completion by vendor
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - Verification result
+ */
+async verifyTaskCompletion(req, res) {
+  try {
+    const taskId = parseInt(req.params.id);
+    const { verified, feedback } = req.body;
+    const vendorUserId = req.user.id;
+
+    // Verify user is a vendor
+    if (req.user.role !== 'vendor') {
+      return res.status(403).json({ 
+        message: 'Access denied. Only vendors can verify task completion.' 
+      });
+    }
+
+    // Validate required fields
+    if (typeof verified !== 'boolean') {
+      return res.status(400).json({ 
+        message: 'Verification status (verified) is required and must be boolean' 
+      });
+    }
+
+    // Check if task exists and get assignee details
+    const taskQuery = `
+      SELECT t.*, u.working_for, u.first_name || ' ' || u.last_name as assignee_name
+      FROM tasks t
+      JOIN users u ON t.assignee_id = u.id
+      WHERE t.id = $1
+    `;
+    
+    const { rows: taskRows } = await db.query(taskQuery, [taskId]);
+    
+    if (taskRows.length === 0) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const task = taskRows[0];
+
+    // Check if vendor has permission to verify this task
+    if (task.working_for !== vendorUserId) {
+      return res.status(403).json({ 
+        message: 'You do not have permission to verify this task' 
+      });
+    }
+
+    // Check if there's a completed daily update for this task
+    const dailyUpdateQuery = `
+      SELECT * FROM daily_updates 
+      WHERE task_id = $1 AND status = 'completed'
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `;
+    
+    const { rows: updateRows } = await db.query(dailyUpdateQuery, [taskId]);
+    
+    if (updateRows.length === 0) {
+      return res.status(400).json({ 
+        message: 'No completed daily update found for this task' 
+      });
+    }
+
+    if (verified) {
+      // Update task status to completed
+      await db.query(
+        'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['completed', taskId]
+      );
+
+      // Log verification activity
+      await db.query(
+        'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
+        [taskId, vendorUserId, 'verify_completed', `Task completion verified and approved${feedback ? ': ' + feedback : ''}`]
+      );
+    } else {
+      // Reset task status to in_progress if verification failed
+      await db.query(
+        'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['in_progress', taskId]
+      );
+
+      // Reset the latest daily update status
+      await db.query(
+        'UPDATE daily_updates SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['in_progress', updateRows[0].id]
+      );
+
+      // Log rejection activity
+      await db.query(
+        'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
+        [taskId, vendorUserId, 'verify_rejected', `Task completion rejected${feedback ? ': ' + feedback : ''}`]
+      );
+    }
+
+    return res.status(200).json({
+      message: verified ? 'Task completion verified successfully' : 'Task completion rejected',
+      task_id: taskId,
+      verified,
+      feedback: feedback || null
+    });
+
+  } catch (error) {
+    console.error('Verify task completion error:', error);
+    return res.status(500).json({ 
+      message: 'Server error while verifying task completion' 
+    });
+  }
+},
 /**
  * Get daily updates for task
  * @param {Object} req - Express request object

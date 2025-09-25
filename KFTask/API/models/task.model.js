@@ -453,24 +453,25 @@ const countQuery = `
    * Add daily update to task
    */
   async addDailyUpdate(updateData) {
-    const { task_id, user_id, content, update_date } = updateData;
+  const { task_id, user_id, content, update_date, status } = updateData;
 
-    const query = `
-      INSERT INTO daily_updates (task_id, user_id, content, update_date)
-      VALUES ($1, $2, $3, $4)
-      RETURNING *
-    `;
+  const query = `
+    INSERT INTO daily_updates (task_id, user_id, content, update_date, status)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING *
+  `;
 
-    const values = [
-      task_id,
-      user_id,
-      content,
-      update_date || new Date()
-    ];
+  const values = [
+    task_id,
+    user_id,
+    content,
+    update_date || new Date(),
+    status || null
+  ];
 
-    const { rows } = await db.query(query, values);
-    return rows[0];
-  },
+  const { rows } = await db.query(query, values);
+  return rows[0];
+},
 
   /**
    * Get daily updates for task
