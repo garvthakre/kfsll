@@ -399,6 +399,98 @@ router.get('/types', authenticateToken, ProjectController.getProjectTypes);
 
 /**
  * @swagger
+ * /api/projects/{id}/tasks:
+ *   get:
+ *     summary: Get all tasks for a specific project
+ *     description: Retrieve all tasks belonging to a specific project with task details including assignee and creator information
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Project ID
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: List of project tasks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 project:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     title:
+ *                       type: string
+ *                       example: "Website Development"
+ *                     status:
+ *                       type: string
+ *                       example: "in_progress"
+ *                 tasks:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Task'
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Project not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:id/tasks', authenticateToken, ProjectController.getProjectTasks);
+
+/**
+ * @swagger
+ * /api/projects/my:
+ *   get:
+ *     summary: Get my projects (made by me or assigned to me)
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of user's projects
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: Project ID
+ *                       title:
+ *                         type: string
+ *                         description: Project title
+ *                       start_date:
+ *                         type: string
+ *                         format: date
+ *                         description: Project start date
+ *                       end_date:
+ *                         type: string
+ *                         format: date
+ *                         description: Project end date
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/my', authenticateToken, ProjectController.getMyProjects);
+
+/**
+ * @swagger
  * /api/projects/statuses:
  *   get:
  *     summary: Get all available project statuses
@@ -883,7 +975,7 @@ router.post('/', [
     .isIn(['planning', 'in_progress', 'on_hold', 'completed', 'cancelled'])
     .withMessage('Status must be one of: planning, in_progress, on_hold, completed, cancelled')
 ], ProjectController.createProject);
-
+ 
 /**
  * @swagger
  * /api/projects/{id}:

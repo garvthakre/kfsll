@@ -55,6 +55,86 @@ async create(projectData) {
   return rows[0];
 },
 /**
+ * Get projects made by user or assigned to user (id, title, dates only)
+ * @param {number} userId - User ID
+ * @returns {Promise<Array>} - Array of projects with id, title, start_date, end_date
+ */
+async getMyProjects(userId) {
+  const query = `
+    SELECT DISTINCT p.id, p.title, p.start_date, p.end_date
+    FROM projects p
+    LEFT JOIN project_team_members ptm ON p.id = ptm.project_id
+    WHERE p.manager_id = $1 OR p.client_id = $1
+    ORDER BY p.id ASC
+  `;
+  const { rows } = await db.query(query, [userId]);
+  return rows;
+},
+
+/**
+ * Get all tasks for a specific project
+ * @param {number} projectId - Project ID
+ * @param {number} limit - Number of results per page
+ * @param {number} offset - Pagination offset
+ * @param {Object} filters - Filtering options
+ * @returns {Promise<Array>} - Array of tasks
+ */
+async getProjectTasks(projectId ) {
+  const query = `
+    SELECT 
+      t.id,
+      t.title,
+      t.due_date,
+      t.created_at,
+      t.updated_at
+    FROM tasks t
+    WHERE t.project_id = $1
+    ORDER BY t.id ASC
+  `;
+  
+  const queryParams = [projectId];
+   
+
+  const { rows } = await db.query(query, queryParams);
+  return rows;
+},
+
+/**
+ * Count total tasks for a project
+ * @param {number} projectId - Project ID
+ * @param {Object} filters - Filtering options
+ * @returns {Promise<number>} - Total task count
+ */
+async countProjectTasks(projectId, filters = {}) {
+  let query = 'SELECT COUNT(*) FROM tasks t WHERE t.project_id = $1';
+  const queryParams = [projectId];
+  let paramIndex = 2;
+
+  // Add filters to query
+  if (filters.status) {
+    query += ` AND t.status = $${paramIndex}`;
+    queryParams.push(filters.status);
+    paramIndex++;
+  }
+
+  if (filters.assignee_id) {
+    query += ` AND t.assignee_id = $${paramIndex}`;
+    queryParams.push(filters.assignee_id);
+    paramIndex++;
+  }
+
+  if (filters.priority) {
+    query += ` AND t.priority = $${paramIndex}`;
+    queryParams.push(filters.priority);
+    paramIndex++;
+  }
+
+  const { rows } = await db.query(query, queryParams);
+  return parseInt(rows[0].count);
+},
+
+
+/**
  * Get all projects with only id and title (name), no filters or pagination
  * @returns {Promise<Array>} - Array of projects with id and title
  */

@@ -180,6 +180,62 @@ async createProject(req, res) {
     return res.status(500).json({ message: 'Server error while creating project' });
   }
 },
+/**
+ * Get projects made by current user or assigned to current user
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object  
+ * @returns {Object} - List of user's projects with id, title, start_date, end_date
+ */
+async getMyProjects(req, res) {
+  try {
+    const userId = req.user.id;
+    const projects = await ProjectModel.getMyProjects(userId);
+    return res.status(200).json({ projects });
+  } catch (error) {
+    console.error('Get my projects error:', error);
+    return res.status(500).json({ message: 'Server error while fetching your projects' });
+  }
+},
+
+/**
+ * Get all tasks for a specific project
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of project tasks
+ */
+async getProjectTasks(req, res) {
+  try {
+    const projectId = parseInt(req.params.id);
+   
+
+    // Check if project exists
+    const project = await ProjectModel.findById(projectId);
+    if (!project) {
+      return res.status(404).json({ message: 'Project not found' });
+    }
+
+ 
+
+    // Get tasks for the project
+    const tasks = await ProjectModel.getProjectTasks(projectId);
+ 
+
+    return res.status(200).json({
+      project: {
+        id: project.id,
+        title: project.title,
+        status: project.status,
+        manager_name: project.manager_name
+      },
+      tasks
+  
+    });
+  } catch (error) {
+    console.error('Get project tasks error:', error);
+    return res.status(500).json({ message: 'Server error while fetching project tasks' });
+  }
+},
+
 
 /**
  * Update a project (Simplified version - similar to create)
