@@ -30,7 +30,7 @@ async create(taskData) {
     project_id || null,
     assignee_id || null,
     due_date || null,
-    status || 'in_progress',
+    status || 'new',
     created_by   
   ];
 
@@ -54,7 +54,8 @@ async findAllByUser(userId, limit, offset) {
     LEFT JOIN projects p ON t.project_id = p.id
     LEFT JOIN users a ON t.assignee_id = a.id
     LEFT JOIN users c ON t.created_by = c.id
-    WHERE t.created_by = $1 OR t.assignee_id = $1
+    WHERE (t.created_by = $1 OR t.assignee_id = $1)
+    AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
     ORDER BY t.due_date ASC
     LIMIT $2 OFFSET $3
   `;
@@ -62,7 +63,8 @@ async findAllByUser(userId, limit, offset) {
   const countQuery = `
     SELECT COUNT(*) as total
     FROM tasks t
-    WHERE t.created_by = $1 OR t.assignee_id = $1
+    WHERE (t.created_by = $1 OR t.assignee_id = $1)
+    AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
   `;
 
   const [tasksResult, countResult] = await Promise.all([
@@ -82,20 +84,22 @@ async findAllByUser(userId, limit, offset) {
 async findAllByUserIDANDTITLES(userId ) {
 const tasksQuery = `
   SELECT id, title
-  FROM tasks
-  WHERE created_by = $1 OR assignee_id = $1
+  FROM tasks t
+     WHERE (t.created_by = $1 OR t.assignee_id = $1)
+    AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
   ORDER BY due_date ASC
   
 `;
 
 const countQuery = `
   SELECT COUNT(*) AS total
-  FROM tasks
-  WHERE created_by = $1 OR assignee_id = $1
+  FROM tasks t
+     WHERE (t.created_by = $1 OR t.assignee_id = $1)
+    AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
 `;
 
 
-  const [tasksResult, countResult] = await Promise.all([
+  const [tasksResult, countResult] =  await Promise.all([
     db.query(tasksQuery, [userId]),
     db.query(countQuery, [userId])
   ]);
@@ -113,7 +117,9 @@ const countQuery = `
   async getAllTaskIdsAndTitles() {
     const query = `
       SELECT id, title
-      FROM tasks
+      FROM tasks t
+        
+     WHERE (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
       ORDER BY id ASC
     `;
     const { rows } = await db.query(query);
@@ -155,6 +161,8 @@ const countQuery = `
       LEFT JOIN users a ON t.assignee_id = a.id
       LEFT JOIN users c ON t.created_by = c.id
       WHERE 1=1
+         
+    AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
     `;
     
     const queryParams = [];
@@ -308,7 +316,7 @@ const countQuery = `
    * Count total tasks
    */
   async countTotal(filters = {}) {
-    let query = 'SELECT COUNT(*) FROM tasks t WHERE 1=1';
+    let query = 'SELECT COUNT(*) FROM tasks t WHERE 1=1 AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)';
     const queryParams = [];
     let paramIndex = 1;
 
