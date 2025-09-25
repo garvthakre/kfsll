@@ -46,7 +46,7 @@ const router = express.Router();
  *           description: Name of task creator
  *         status:
  *           type: string
- *           enum: [to_do, in_progress, review, on_hold, completed, cancelled]
+ *           enum: [new, in_progress, completed, to_do, review, on_hold, cancelled]
  *           description: Task status
  *         priority:
  *           type: string
@@ -133,6 +133,39 @@ const router = express.Router();
  *           type: string
  *           format: date-time
  *           description: Time entry creation date
+ *     DailyUpdate:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Daily update ID
+ *         task_id:
+ *           type: integer
+ *           description: Task ID
+ *         user_id:
+ *           type: integer
+ *           description: User ID who made the update
+ *         user_name:
+ *           type: string
+ *           description: User name
+ *         profile_image:
+ *           type: string
+ *           description: User profile image URL
+ *         content:
+ *           type: string
+ *           description: Daily update content
+ *         status:
+ *           type: string
+ *           enum: [new, in_progress, completed]
+ *           description: Task status at time of update
+ *         update_date:
+ *           type: string
+ *           format: date
+ *           description: Date of the update
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *           description: Update creation timestamp
  *     CreateTaskRequest:
  *       type: object
  *       required:
@@ -141,20 +174,80 @@ const router = express.Router();
  *         title:
  *           type: string
  *           description: Task title
- 
+ *           example: "Complete project documentation"
+ *         project_id:
+ *           type: integer
+ *           description: Project ID
+ *           example: 1
+ *         assignee_id:
+ *           type: integer
+ *           description: User ID to assign the task to
+ *           example: 2
+ *         status:
+ *           type: string
+ *           enum: [new, in_progress, completed]
+ *           default: new
+ *           description: Task status
+ *           example: "new"
+ *         due_date:
+ *           type: string
+ *           format: date
+ *           description: Task due date
+ *           example: "2024-12-31"
+ *     UpdateTaskRequest:
+ *       type: object
+ *       properties:
+ *         title:
+ *           type: string
+ *           description: Task title
+ *         description:
+ *           type: string
+ *           description: Task description
  *         project_id:
  *           type: integer
  *           description: Project ID
  *         assignee_id:
  *           type: integer
  *           description: User ID to assign the task to
- 
- 
+ *         status:
+ *           type: string
+ *           enum: [new, in_progress, completed, to_do, review, on_hold, cancelled]
+ *           description: Task status
+ *         priority:
+ *           type: string
+ *           enum: [low, medium, high, critical]
+ *           description: Task priority
  *         due_date:
  *           type: string
  *           format: date
  *           description: Task due date
- 
+ *         estimated_hours:
+ *           type: number
+ *           format: float
+ *           description: Estimated hours to complete task
+ *         actual_hours:
+ *           type: number
+ *           format: float
+ *           description: Actual hours spent on task
+ *     DailyUpdateRequest:
+ *       type: object
+ *       required:
+ *         - content
+ *       properties:
+ *         content:
+ *           type: string
+ *           description: Daily update content
+ *           example: "Completed the initial research phase and started implementation"
+ *         update_date:
+ *           type: string
+ *           format: date
+ *           description: Date of the update (optional, defaults to current date)
+ *           example: "2025-09-15"
+ *         status:
+ *           type: string
+ *           enum: [new, in_progress, completed]
+ *           description: Task status update (optional)
+ *           example: "in_progress"
  *     AddCommentRequest:
  *       type: object
  *       required:
@@ -163,6 +256,7 @@ const router = express.Router();
  *         content:
  *           type: string
  *           description: Comment content
+ *           example: "This task needs more clarification on requirements"
  *     TrackTimeRequest:
  *       type: object
  *       required:
@@ -172,16 +266,20 @@ const router = express.Router();
  *           type: number
  *           format: float
  *           description: Hours spent
+ *           example: 2.5
  *         minutes:
  *           type: integer
  *           description: Minutes spent
+ *           example: 30
  *         description:
  *           type: string
  *           description: Description of work done
+ *           example: "Implemented user authentication module"
  *         work_date:
  *           type: string
  *           format: date
  *           description: Date when work was performed
+ *           example: "2025-09-15"
  *     TaskStats:
  *       type: object
  *       properties:
@@ -198,6 +296,7 @@ const router = express.Router();
  * /api/tasks/stats:
  *   get:
  *     summary: Get task statistics
+ *     description: Retrieve task statistics grouped by status, optionally filtered by project
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -207,6 +306,7 @@ const router = express.Router();
  *         schema:
  *           type: integer
  *         description: Filter stats by project ID
+ *         example: 1
  *     responses:
  *       200:
  *         description: Task statistics
@@ -219,17 +319,27 @@ const router = express.Router();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/TaskStats'
+ *             example:
+ *               stats:
+ *                 - status: "in_progress"
+ *                   count: 15
+ *                 - status: "new"
+ *                   count: 8
+ *                 - status: "completed"
+ *                   count: 25
  *       401:
  *         description: Not authenticated
  *       500:
  *         description: Server error
  */
 router.get('/stats', authenticateToken, TaskController.getTaskStats);
+
 /**
  * @swagger
  * /api/tasks/my:
  *   get:
  *     summary: Get all tasks assigned to or created by the user (with pagination)
+ *     description: Retrieve tasks where the authenticated user is either the assignee or creator, with pagination support
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -240,12 +350,14 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
  *           type: integer
  *           default: 1
  *         description: Page number for pagination
+ *         example: 1
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
  *         description: Number of tasks per page
+ *         example: 10
  *     responses:
  *       200:
  *         description: All tasks for the authenticated user with pagination
@@ -254,27 +366,38 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
  *             schema:
  *               type: object
  *               properties:
- *                 total:
- *                   type: integer
- *                 page:
- *                   type: integer
- *                 limit:
- *                   type: integer
  *                 tasks:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Task'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 25
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 3
  *       401:
  *         description: Not authenticated
  *       500:
  *         description: Server error
  */
 router.get('/my', authenticateToken, TaskController.getMyTasks);
+
 /**
  * @swagger
  * /api/tasks/my-tasksid:
  *   get:
- *     summary: Get all tasks assigned to or created by the user 
+ *     summary: Get all tasks assigned to or created by the user (ID and title only)
+ *     description: Retrieve minimal task info for the authenticated user - only ID and title, no pagination
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -286,8 +409,6 @@ router.get('/my', authenticateToken, TaskController.getMyTasks);
  *             schema:
  *               type: object
  *               properties:
- *                 total:
- *                   type: integer
  *                 tasks:
  *                   type: array
  *                   items:
@@ -295,8 +416,13 @@ router.get('/my', authenticateToken, TaskController.getMyTasks);
  *                     properties:
  *                       id:
  *                         type: integer
+ *                         example: 1
  *                       title:
  *                         type: string
+ *                         example: "Complete project documentation"
+ *                 total:
+ *                   type: integer
+ *                   example: 15
  *       401:
  *         description: Not authenticated
  *       500:
@@ -304,12 +430,12 @@ router.get('/my', authenticateToken, TaskController.getMyTasks);
  */
 router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDTITLES);
 
-
 /**
  * @swagger
  * /api/tasks/ids-titles:
  *   get:
  *     summary: Get all tasks (ID and title only)
+ *     description: Retrieve all tasks with only ID and title information for dropdown/selection purposes
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -329,9 +455,11 @@ router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDT
  *                       id:
  *                         type: integer
  *                         description: Task ID
+ *                         example: 1
  *                       title:
  *                         type: string
  *                         description: Task title
+ *                         example: "Complete project documentation"
  *       401:
  *         description: Not authenticated
  *       500:
@@ -344,6 +472,7 @@ router.get('/ids-titles', authenticateToken, TaskController.getAllTaskIdsAndTitl
  * /api/tasks/overdue:
  *   get:
  *     summary: Get overdue tasks
+ *     description: Retrieve tasks that are past their due date and not completed or cancelled
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -354,6 +483,7 @@ router.get('/ids-titles', authenticateToken, TaskController.getAllTaskIdsAndTitl
  *           type: integer
  *           default: 10
  *         description: Number of tasks to return
+ *         example: 5
  *     responses:
  *       200:
  *         description: List of overdue tasks
@@ -378,6 +508,7 @@ router.get('/overdue', authenticateToken, TaskController.getOverdueTasks);
  * /api/tasks/upcoming:
  *   get:
  *     summary: Get upcoming tasks due soon
+ *     description: Retrieve tasks that are due within a specified number of days
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -388,12 +519,14 @@ router.get('/overdue', authenticateToken, TaskController.getOverdueTasks);
  *           type: integer
  *           default: 7
  *         description: Number of days to look ahead
+ *         example: 7
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
  *         description: Number of tasks to return
+ *         example: 10
  *     responses:
  *       200:
  *         description: List of upcoming tasks
@@ -418,6 +551,7 @@ router.get('/upcoming', authenticateToken, TaskController.getUpcomingTasks);
  * /api/tasks:
  *   get:
  *     summary: Get all tasks with pagination and filters
+ *     description: Retrieve all tasks with comprehensive filtering, searching, and pagination options
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -428,60 +562,71 @@ router.get('/upcoming', authenticateToken, TaskController.getUpcomingTasks);
  *           type: integer
  *           default: 1
  *         description: Page number
+ *         example: 1
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
  *         description: Results per page
+ *         example: 10
  *       - in: query
  *         name: project_id
  *         schema:
  *           type: integer
  *         description: Filter by project ID
+ *         example: 1
  *       - in: query
  *         name: assignee_id
  *         schema:
  *           type: integer
  *         description: Filter by assignee ID
+ *         example: 2
  *       - in: query
  *         name: created_by
  *         schema:
  *           type: integer
  *         description: Filter by creator ID
+ *         example: 3
  *       - in: query
  *         name: status
  *         schema:
  *           type: string
  *         description: Filter by status (comma separated for multiple)
+ *         example: "new,in_progress"
  *       - in: query
  *         name: priority
  *         schema:
  *           type: string
  *         description: Filter by priority (comma separated for multiple)
+ *         example: "high,critical"
  *       - in: query
  *         name: due_date_start
  *         schema:
  *           type: string
  *           format: date
  *         description: Filter by due date range start
+ *         example: "2024-01-01"
  *       - in: query
  *         name: due_date_end
  *         schema:
  *           type: string
  *           format: date
  *         description: Filter by due date range end
+ *         example: "2024-12-31"
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
  *         description: Search term for title or description
+ *         example: "documentation"
  *       - in: query
  *         name: sort_by
  *         schema:
  *           type: string
  *           default: due_date
  *         description: Field to sort by
+ *         example: "due_date"
  *       - in: query
  *         name: sort_order
  *         schema:
@@ -489,6 +634,7 @@ router.get('/upcoming', authenticateToken, TaskController.getUpcomingTasks);
  *           enum: [asc, desc]
  *           default: asc
  *         description: Sort order
+ *         example: "asc"
  *     responses:
  *       200:
  *         description: List of tasks
@@ -528,6 +674,7 @@ router.get('/', authenticateToken, TaskController.getAllTasks);
  * /api/tasks/{id}:
  *   get:
  *     summary: Get task by ID with comments and time entries
+ *     description: Retrieve detailed task information including comments, time entries, and daily updates
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -538,6 +685,7 @@ router.get('/', authenticateToken, TaskController.getAllTasks);
  *         schema:
  *           type: integer
  *         description: Task ID
+ *         example: 1
  *     responses:
  *       200:
  *         description: Task details
@@ -547,16 +695,22 @@ router.get('/', authenticateToken, TaskController.getAllTasks);
  *               type: object
  *               properties:
  *                 task:
- *                   $ref: '#/components/schemas/Task'
- *                   properties:
- *                     comments:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/TaskComment'
- *                     time_entries:
- *                       type: array
- *                       items:
- *                         $ref: '#/components/schemas/TimeEntry'
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/Task'
+ *                     - type: object
+ *                       properties:
+ *                         feedback:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/TaskComment'
+ *                         time_entries:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/TimeEntry'
+ *                         daily_updates:
+ *                           type: array
+ *                           items:
+ *                             $ref: '#/components/schemas/DailyUpdate'
  *       401:
  *         description: Not authenticated
  *       404:
@@ -571,6 +725,7 @@ router.get('/:id', authenticateToken, TaskController.getTaskById);
  * /api/tasks:
  *   post:
  *     summary: Create a new task
+ *     description: Create a new task with title, optional project assignment, assignee, status, and due date
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -583,8 +738,32 @@ router.get('/:id', authenticateToken, TaskController.getTaskById);
  *     responses:
  *       201:
  *         description: Task created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Task created successfully"
+ *                 task:
+ *                   $ref: '#/components/schemas/Task'
  *       400:
  *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       msg:
+ *                         type: string
+ *                       param:
+ *                         type: string
  *       401:
  *         description: Not authenticated
  *       500:
@@ -592,7 +771,8 @@ router.get('/:id', authenticateToken, TaskController.getTaskById);
  */
 router.post('/', [
   authenticateToken,
-  check('title').notEmpty().withMessage('Title is required')
+  check('title').notEmpty().withMessage('Title is required'),
+  check('status').optional().isIn(['new', 'in_progress', 'completed']).withMessage('Invalid status value')
 ], TaskController.createTask);
 
 /**
@@ -600,7 +780,7 @@ router.post('/', [
  * /api/tasks/{id}:
  *   put:
  *     summary: Update a task
- *     description: Only task creator, assignee, manager or admin can update task
+ *     description: Update task details. Only task creator, assignee, manager or admin can update task
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -611,15 +791,26 @@ router.post('/', [
  *         schema:
  *           type: integer
  *         description: Task ID
+ *         example: 1
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CreateTaskRequest'
+ *             $ref: '#/components/schemas/UpdateTaskRequest'
  *     responses:
  *       200:
  *         description: Task updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Task updated successfully"
+ *                 task:
+ *                   $ref: '#/components/schemas/Task'
  *       400:
  *         description: Validation error
  *       401:
@@ -633,7 +824,8 @@ router.post('/', [
  */
 router.put('/:id', [
   authenticateToken,
-  check('title').optional().notEmpty().withMessage('Title cannot be empty if provided')
+  check('title').optional().notEmpty().withMessage('Title cannot be empty if provided'),
+  check('status').optional().isIn(['new', 'in_progress', 'completed', 'to_do', 'review', 'on_hold', 'cancelled']).withMessage('Invalid status value')
 ], TaskController.updateTask);
 
 /**
@@ -641,7 +833,7 @@ router.put('/:id', [
  * /api/tasks/{id}:
  *   delete:
  *     summary: Delete a task
- *     description: Only task creator, manager or admin can delete task
+ *     description: Delete a task permanently. Only task creator, manager or admin can delete task
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -652,9 +844,18 @@ router.put('/:id', [
  *         schema:
  *           type: integer
  *         description: Task ID
+ *         example: 1
  *     responses:
  *       200:
  *         description: Task deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Task deleted successfully"
  *       401:
  *         description: Not authenticated
  *       403:
@@ -671,6 +872,7 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  * /api/tasks/{id}/feedback:
  *   get:
  *     summary: Get feedback for a task
+ *     description: Retrieve all feedback/comments for a specific task
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -681,21 +883,33 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  *         schema:
  *           type: integer
  *         description: Task ID
+ *         example: 1
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 50
  *         description: Results per page
+ *         example: 20
  *       - in: query
  *         name: offset
  *         schema:
  *           type: integer
  *           default: 0
  *         description: Pagination offset
+ *         example: 0
  *     responses:
  *       200:
  *         description: List of feedback
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 feedback:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/TaskComment'
  *       401:
  *         description: Not authenticated
  *       404:
@@ -710,6 +924,7 @@ router.get('/:id/feedback', authenticateToken, TaskController.getFeedback);
  * /api/tasks/{id}/feedback:
  *   post:
  *     summary: Add feedback to a task
+ *     description: Add feedback/comment to a specific task
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -720,21 +935,26 @@ router.get('/:id/feedback', authenticateToken, TaskController.getFeedback);
  *         schema:
  *           type: integer
  *         description: Task ID
+ *         example: 1
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - content
- *             properties:
- *               content:
- *                 type: string
- *                 description: Feedback content
+ *             $ref: '#/components/schemas/AddCommentRequest'
  *     responses:
  *       201:
  *         description: Feedback added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Feedback added successfully"
+ *                 feedback:
+ *                   $ref: '#/components/schemas/TaskComment'
  *       400:
  *         description: Validation error
  *       401:
@@ -754,6 +974,7 @@ router.post('/:id/feedback', [
  * /api/tasks/{id}/daily-updates:
  *   get:
  *     summary: Get daily updates for a task
+ *     description: Retrieve all daily updates for a specific task, ordered by date
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -764,21 +985,33 @@ router.post('/:id/feedback', [
  *         schema:
  *           type: integer
  *         description: Task ID
+ *         example: 1
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 50
  *         description: Results per page
+ *         example: 20
  *       - in: query
  *         name: offset
  *         schema:
  *           type: integer
  *           default: 0
  *         description: Pagination offset
+ *         example: 0
  *     responses:
  *       200:
  *         description: List of daily updates
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 daily_updates:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/DailyUpdate'
  *       401:
  *         description: Not authenticated
  *       404:
@@ -793,6 +1026,7 @@ router.get('/:id/daily-updates', authenticateToken, TaskController.getDailyUpdat
  * /api/tasks/{id}/daily-updates:
  *   post:
  *     summary: Add a daily update to a task
+ *     description: Add a daily update to a task with optional status change. If status is provided, it will also update the task's status.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -803,25 +1037,26 @@ router.get('/:id/daily-updates', authenticateToken, TaskController.getDailyUpdat
  *         schema:
  *           type: integer
  *         description: Task ID
+ *         example: 1
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - content
- *             properties:
- *               content:
- *                 type: string
- *                 description: Daily update content
- *               update_date:
- *                 type: string
- *                 format: date
- *                 description: Date of the update (optional, defaults to current date)
+ *             $ref: '#/components/schemas/DailyUpdateRequest'
  *     responses:
  *       201:
  *         description: Daily update added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Daily update added successfully"
+ *                 daily_update:
+ *                   $ref: '#/components/schemas/DailyUpdate'
  *       400:
  *         description: Validation error
  *       401:
@@ -833,7 +1068,8 @@ router.get('/:id/daily-updates', authenticateToken, TaskController.getDailyUpdat
  */
 router.post('/:id/daily-updates', [
   authenticateToken,
-  check('content').notEmpty().withMessage('Daily update content is required')
+  check('content').notEmpty().withMessage('Daily update content is required'),
+  check('status').optional().isIn(['new', 'in_progress', 'completed']).withMessage('Invalid status value')
 ], TaskController.addDailyUpdate);
 
 /**
@@ -841,6 +1077,7 @@ router.post('/:id/daily-updates', [
  * /api/tasks/{id}/time:
  *   get:
  *     summary: Get time entries for a task
+ *     description: Retrieve all time entries logged for a specific task
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -851,6 +1088,7 @@ router.post('/:id/daily-updates', [
  *         schema:
  *           type: integer
  *         description: Task ID
+ *         example: 1
  *     responses:
  *       200:
  *         description: List of time entries
@@ -877,6 +1115,7 @@ router.get('/:id/time', authenticateToken, TaskController.getTimeEntries);
  * /api/tasks/{id}/time:
  *   post:
  *     summary: Track time on a task
+ *     description: Log time spent working on a specific task
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -887,6 +1126,7 @@ router.get('/:id/time', authenticateToken, TaskController.getTimeEntries);
  *         schema:
  *           type: integer
  *         description: Task ID
+ *         example: 1
  *     requestBody:
  *       required: true
  *       content:
@@ -896,6 +1136,16 @@ router.get('/:id/time', authenticateToken, TaskController.getTimeEntries);
  *     responses:
  *       201:
  *         description: Time tracked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Time tracked successfully"
+ *                 time_entry:
+ *                   $ref: '#/components/schemas/TimeEntry'
  *       400:
  *         description: Validation error
  *       401:
@@ -907,9 +1157,9 @@ router.get('/:id/time', authenticateToken, TaskController.getTimeEntries);
  */
 router.post('/:id/time', [
   authenticateToken,
-  check('hours').isNumeric().withMessage('Hours must be a number')
+  check('hours').isNumeric().withMessage('Hours must be a number'),
+  check('minutes').optional().isInt({ min: 0, max: 59 }).withMessage('Minutes must be between 0 and 59'),
+  check('work_date').optional().isDate().withMessage('Work date must be a valid date')
 ], TaskController.trackTime);
-
- 
 
 export default router;

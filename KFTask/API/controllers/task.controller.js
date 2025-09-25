@@ -163,7 +163,7 @@ async getAllTaskIdsAndTitles(req, res) {
         due_date,
        
       } = req.body;
-       let taskStatus = status || 'in_progress';
+       let taskStatus = status || 'new';
       // Check if project exists
       if (project_id) {
         const project = await ProjectModel.findById(project_id);
@@ -304,7 +304,7 @@ async addDailyUpdate(req, res) {
     }
 
     const taskId = parseInt(req.params.id);
-    const { content, update_date } = req.body;
+    const { content, update_date,status } = req.body;
 
     // Check if task exists
     const task = await TaskModel.findById(taskId);
@@ -317,7 +317,8 @@ async addDailyUpdate(req, res) {
       task_id: taskId,
       user_id: req.user.id,
       content,
-      update_date
+      update_date,
+      status
     });
 
     // Get user details for response
