@@ -386,30 +386,14 @@ async getTasksPendingVerification(req, res) {
 
     const query = `
       SELECT 
-        t.id,
-        t.title,
-        t.project_id,
-        t.due_date,
-        t.created_at,
-        du.id as daily_update_id,
-        du.content as latest_update,
-        du.update_date,
-        du.created_at as update_created_at,
-        du.status as update_status,
-        p.title as project_title,
-        u.first_name || ' ' || u.last_name as assignee_name,
-        u.id as assignee_id
+        du.*,
+        t.title as task_title,
+        u.first_name || ' ' || u.last_name as assignee_name
       FROM daily_updates du
       JOIN tasks t ON du.task_id = t.id
       JOIN users u ON t.assignee_id = u.id
-      LEFT JOIN projects p ON t.project_id = p.id
       WHERE du.status = 'completed_not_verified'
         AND u.working_for = $1
-        AND du.id = (
-          SELECT MAX(id) 
-          FROM daily_updates du2 
-          WHERE du2.task_id = t.id
-        )
       ORDER BY du.created_at DESC
     `;
 
