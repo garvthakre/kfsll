@@ -376,40 +376,48 @@ async addDailyUpdate(req, res) {
 async getTasksPendingVerification(req, res) {
   try {
     const vendorUserId = req.user.id;
-    
+
     // Verify user is a vendor
     if (req.user.role !== 'vendor') {
-      return res.status(403).json({ 
-        message: 'Access denied. Only vendors can access this resource.' 
+      return res.status(403).json({
+        message: 'Access denied. Only vendors can access this resource.'
       });
     }
 
     const query = `
       SELECT 
         du.*,
-        t.title as task_title,
-        u.first_name || ' ' || u.last_name as assignee_name
+        t.title AS task_title,
+        u.first_name || ' ' || u.last_name AS assignee_name
       FROM daily_updates du
       JOIN tasks t ON du.task_id = t.id
       JOIN users u ON t.assignee_id = u.id
       WHERE du.status = 'completed_not_verified'
-        AND u.working_for = $1
+        AND t.created_by = $1   -- only tasks created by this vendor
       ORDER BY du.created_at DESC
     `;
 
     const { rows } = await db.query(query, [vendorUserId]);
-    
+
+    // if (rows.length === 0) {
+    //   return res.status(404).json({
+    //     message: 'No tasks pending verification for this vendor',
+    //     tasks: []
+    //   });
+    // }
+
     return res.status(200).json({
       message: 'Tasks pending verification retrieved successfully',
       tasks: rows
     });
   } catch (error) {
     console.error('Get tasks pending verification error:', error);
-    return res.status(500).json({ 
-      message: 'Server error while fetching tasks pending verification' 
+    return res.status(500).json({
+      message: 'Server error while fetching tasks pending verification'
     });
   }
-},
+}
+,
 
 /**
  * Verify task completion by vendor
@@ -420,7 +428,7 @@ async getTasksPendingVerification(req, res) {
 async verifyTaskCompletion(req, res) {
   try {
     const taskId = parseInt(req.params.id);
-    const { verified, feedback } = req.body;
+    const { verified, feedback, rating } = req.body;
     const vendorUserId = req.user.id;
 
     // Verify user is a vendor
@@ -483,16 +491,23 @@ async verifyTaskCompletion(req, res) {
         ['completed_verified', updateRows[0].id]
       );
 
-      // Update task status to completed
-      await db.query(
-        'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
-        ['completed', taskId]
-      );
+      // Update task status to completed and set rating if provided
+      if (rating !== undefined && rating !== null) {
+        await db.query(
+          'UPDATE tasks SET status = $1, rating = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+          ['completed', rating, taskId]
+        );
+      } else {
+        await db.query(
+          'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          ['completed', taskId]
+        );
+      }
 
       // Log verification activity
       await db.query(
         'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
-        [taskId, vendorUserId, 'verify_completed', `Task completion verified and approved${feedback ? ': ' + feedback : ''}`]
+        [taskId, vendorUserId, 'verify_completed', `Task completion verified and approved${rating ? ' with rating: ' + rating : ''}${feedback ? ': ' + feedback : ''}`]
       );
     } else {
       // Reset daily update status to in_progress
@@ -501,7 +516,7 @@ async verifyTaskCompletion(req, res) {
         ['in_progress', updateRows[0].id]
       );
 
-      // Reset task status to in_progress
+      // Reset task status to in_progress (rating stays unchanged)
       await db.query(
         'UPDATE tasks SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
         ['in_progress', taskId]
@@ -518,7 +533,8 @@ async verifyTaskCompletion(req, res) {
       message: verified ? 'Task completion verified successfully' : 'Task completion rejected',
       task_id: taskId,
       verified,
-      feedback: feedback || null
+      feedback: feedback || null,
+      rating: verified && rating ? rating : null
     });
 
   } catch (error) {

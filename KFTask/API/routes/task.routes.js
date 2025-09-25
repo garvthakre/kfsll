@@ -27,6 +27,12 @@ const router = express.Router();
  *           type: string
  *           description: Optional feedback message from vendor
  *           example: "Good work, task completed as expected"
+ *         rating:
+ *           type: number
+ *           minimum: 1
+ *           maximum: 5
+ *           description: Rating for the task (1-5). Only saved when verified is true
+ *           example: 4.5
  *     PendingVerificationTask:
  *       type: object
  *       properties:
@@ -822,7 +828,7 @@ router.get('/:id', authenticateToken, TaskController.getTaskById);
  * /api/tasks/{id}/verify:
  *   put:
  *     summary: Verify task completion by vendor
- *     description: Allow vendors to approve or reject task completion based on consultant's daily update. Only accessible by vendors.
+ *     description: Allow vendors to approve or reject task completion based on consultant's daily update. When approving, can also provide a rating. Only accessible by vendors.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -863,6 +869,10 @@ router.get('/:id', authenticateToken, TaskController.getTaskById);
  *                   type: string
  *                   description: Vendor feedback
  *                   example: "Good work, task completed as expected"
+ *                 rating:
+ *                   type: number
+ *                   description: Rating given (only when verified is true)
+ *                   example: 4.5
  *       400:
  *         description: Validation error or no completed daily update found
  *       403:
@@ -877,7 +887,8 @@ router.get('/:id', authenticateToken, TaskController.getTaskById);
 router.put('/:id/verify', [
   authenticateToken,
   check('verified').isBoolean().withMessage('Verified field is required and must be boolean'),
-  check('feedback').optional().isString().withMessage('Feedback must be a string')
+  check('feedback').optional().isString().withMessage('Feedback must be a string'),
+  check('rating').optional().isFloat({ min: 1, max: 5 }).withMessage('Rating must be a number between 1 and 5')
 ], TaskController.verifyTaskCompletion);
 /**
  * @swagger
