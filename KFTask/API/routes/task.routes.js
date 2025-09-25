@@ -563,19 +563,19 @@ router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDT
  *         schema:
  *           type: integer
  *         description: Filter by specific task ID
- *         example: 123
+ *         example: 0
  *       - in: query
  *         name: project_id
  *         schema:
  *           type: integer
  *         description: Filter by project ID
- *         example: 456
+ *         example: 0
  *       - in: query
  *         name: created_by
  *         schema:
  *           type: integer
  *         description: Filter by task creator's user ID
- *         example: 789
+ *         example: 0
  *       - in: query
  *         name: update_date_start
  *         schema:
@@ -589,7 +589,7 @@ router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDT
  *           type: string
  *           format: date
  *         description: Filter daily updates up to this date
- *         example: "2024-01-31"
+ *         example: "2025-12-31"
  *     responses:
  *       200:
  *         description: List of tasks with daily updates

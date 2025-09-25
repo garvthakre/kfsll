@@ -373,11 +373,26 @@ async addDailyUpdate(req, res) {
  * @param {Object} res - Express response object
  * @returns {Object} - List of tasks with daily updates
  */
+/**
+ * Get all tasks with daily updates and filters
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of tasks with daily updates
+ */
 async getAllTasksWithDailyUpdates(req, res) {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
+    const limitParam = req.query.limit;
+    
+    // Handle limit=0 or limit="all" to get all results
+    let limit, offset;
+    if (limitParam === '0' || limitParam === 'all' || parseInt(limitParam) === 0) {
+      limit = null; // No limit
+      offset = 0;   // No offset
+    } else {
+      limit = parseInt(limitParam) || 10;
+      offset = (page - 1) * limit;
+    }
 
     // Build filters object from query parameters
     const filters = {
@@ -398,21 +413,28 @@ async getAllTasksWithDailyUpdates(req, res) {
     const tasks = await TaskModel.findAllWithDailyUpdates(limit, offset, filters);
     const total = await TaskModel.countTotalWithDailyUpdates(filters);
 
-    return res.status(200).json({
-      tasks,
-      pagination: {
+    // Prepare response based on whether pagination is used
+    const response = { tasks };
+    
+    if (limit !== null) {
+      // Include pagination info only when limit is applied
+      response.pagination = {
         total,
         page,
         limit,
         pages: Math.ceil(total / limit)
-      }
-    });
+      };
+    } else {
+      // When returning all results, just include total count
+      response.total = total;
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     console.error('Get all tasks with daily updates error:', error);
     return res.status(500).json({ message: 'Server error while fetching tasks with daily updates' });
   }
 },
-
 /**
  * Get tasks pending verification by vendor
  * @param {Object} req - Express request object
