@@ -42,9 +42,9 @@ async create(taskData) {
 },
 
 /**
- * Find all tasks where user is assignee or creator (no filters)
+ * Find all tasks where user is assignee or creator (no filters, no pagination)
  */
-async findAllByUser(userId, limit, offset) {
+async findAllByUser(userId) {
   console.log('findAllByUser called with userId:', userId, 'type:', typeof userId);
   
   const tasksQuery = `
@@ -64,29 +64,15 @@ async findAllByUser(userId, limit, offset) {
       CASE WHEN t.due_date IS NULL THEN 1 ELSE 0 END,
       t.due_date ASC,
       t.created_at DESC
-    LIMIT $2 OFFSET $3
   `;
 
-  const countQuery = `
-    SELECT COUNT(*) as total
-    FROM tasks t
-    WHERE (t.created_by = $1 OR t.assignee_id = $1)
-    AND t.status != 'completed'
-  `;
-
-  const [tasksResult, countResult] = await Promise.all([
-    db.query(tasksQuery, [userId, limit, offset]),
-    db.query(countQuery, [userId])
-  ]);
+  const tasksResult = await db.query(tasksQuery, [userId]);
 
   console.log('Query results for userId', userId, ':', tasksResult.rows.length, 'tasks found');
   
-
-  return {
-    tasks: tasksResult.rows,
-    total: parseInt(countResult.rows[0].total, 10)
-  };
+  return tasksResult.rows;
 },
+
   /**
    * Find all tasks where user is assignee or creator (no filters)
    */

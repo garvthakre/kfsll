@@ -99,22 +99,11 @@ async getMyTasksWITHIDANDTITLES(req, res) {
 async getMyTasks(req, res) {
   try {
     const userId = req.user.id;
-    const { page = 1, limit = 10 } = req.query;
 
-    const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));  
-    const offset = (pageNum - 1) * limitNum;
-
-    const { tasks, total } = await TaskModel.findAllByUser(userId, limitNum, offset);
+    const tasks = await TaskModel.findAllByUser(userId);
 
     return res.status(200).json({
-      tasks,
-      pagination: {
-        total,
-        page: pageNum,
-        limit: limitNum,
-        totalPages: Math.ceil(total / limitNum),
-      }
+      tasks
     });
   } catch (error) {
     console.error('Get my tasks error:', error);

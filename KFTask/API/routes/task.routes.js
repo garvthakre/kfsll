@@ -441,29 +441,14 @@ router.get('/pending-verification', authenticateToken, TaskController.getTasksPe
  * @swagger
  * /api/tasks/my:
  *   get:
- *     summary: Get all tasks assigned to or created by the user (with pagination)
- *     description: Retrieve tasks where the authenticated user is either the assignee or creator, with pagination support
+ *     summary: Get all tasks assigned to or created by the user
+ *     description: Retrieve all tasks where the authenticated user is either the assignee or creator
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number for pagination
- *         example: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Number of tasks per page
- *         example: 10
  *     responses:
  *       200:
- *         description: All tasks for the authenticated user with pagination
+ *         description: All tasks for the authenticated user
  *         content:
  *           application/json:
  *             schema:
@@ -473,21 +458,6 @@ router.get('/pending-verification', authenticateToken, TaskController.getTasksPe
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Task'
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     total:
- *                       type: integer
- *                       example: 25
- *                     page:
- *                       type: integer
- *                       example: 1
- *                     limit:
- *                       type: integer
- *                       example: 10
- *                     totalPages:
- *                       type: integer
- *                       example: 3
  *       401:
  *         description: Not authenticated
  *       500:
