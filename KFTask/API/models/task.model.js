@@ -389,7 +389,7 @@ const countQuery = `
     const { rows } = await db.query(query, queryParams);
     return parseInt(rows[0].count);
   },
-// Add these methods to your TaskModel in task.model.js
+ 
 
 /**
  * Find all tasks that have daily updates with pagination and filters
@@ -400,6 +400,8 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
       t.title,
       t.project_id,
       p.title as project_name,
+      t.assignee_id,
+      a.first_name || ' ' || a.last_name as assignee_name,
       t.created_by,
       c.first_name || ' ' || c.last_name as created_by_name,
       t.status,
@@ -409,6 +411,7 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
       (SELECT COUNT(*) FROM daily_updates WHERE task_id = t.id) as daily_updates_count
     FROM tasks t
     LEFT JOIN projects p ON t.project_id = p.id
+    LEFT JOIN users a ON t.assignee_id = a.id
     LEFT JOIN users c ON t.created_by = c.id
     INNER JOIN daily_updates du ON t.id = du.task_id
     WHERE 1=1
@@ -427,6 +430,12 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
   if (filters.project_id) {
     query += ` AND t.project_id = $${paramIndex}`;
     queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.assignee_id) {
+    query += ` AND t.assignee_id = $${paramIndex}`;
+    queryParams.push(filters.assignee_id);
     paramIndex++;
   }
 
@@ -451,9 +460,11 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
   // Add sorting
   query += ' ORDER BY t.updated_at DESC';
 
-  // Add pagination
-  query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-  queryParams.push(limit, offset);
+  // Add pagination only if limit is provided
+  if (limit !== null) {
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryParams.push(limit, offset);
+  }
 
   const { rows } = await db.query(query, queryParams);
   return rows;
@@ -486,6 +497,12 @@ async countTotalWithDailyUpdates(filters = {}) {
     paramIndex++;
   }
 
+  if (filters.assignee_id) {
+    query += ` AND t.assignee_id = $${paramIndex}`;
+    queryParams.push(filters.assignee_id);
+    paramIndex++;
+  }
+
   if (filters.created_by) {
     query += ` AND t.created_by = $${paramIndex}`;
     queryParams.push(filters.created_by);
@@ -507,22 +524,6 @@ async countTotalWithDailyUpdates(filters = {}) {
   const { rows } = await db.query(query, queryParams);
   return parseInt(rows[0].total);
 },
-  /**
-   * Add a comment to a task
-   */
-  async addComment(commentData) {
-    const { task_id, user_id, content } = commentData;
-
-    const query = `
-      INSERT INTO task_comments (task_id, user_id, content)
-      VALUES ($1, $2, $3)
-      RETURNING *
-    `;
-
-    const { rows } = await db.query(query, [task_id, user_id, content]);
-    return rows[0];
-  },
-
   /**
    * Get comments for a task
    */

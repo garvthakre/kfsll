@@ -19,7 +19,7 @@ async create(projectData) {
   const {
     title,
     description,
-    client_id,  // Added client_id
+    client_id,
     start_date,
     end_date,
     status,
@@ -27,7 +27,7 @@ async create(projectData) {
     manager_id,
     department,
     priority,
-    project_type
+    project_type,
   } = projectData;
 
   const query = `
@@ -40,7 +40,7 @@ async create(projectData) {
   const values = [
     title,
     description,
-    client_id || null,   
+    client_id || null,
     start_date,
     end_date,
     status || 'planning',
@@ -48,7 +48,7 @@ async create(projectData) {
     manager_id,
     department,
     priority || 'medium',
-    project_type
+    project_type ?? null, // ✅ correct null handling
   ];
 
   const { rows } = await db.query(query, values);

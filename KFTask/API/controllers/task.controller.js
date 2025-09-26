@@ -373,12 +373,6 @@ async addDailyUpdate(req, res) {
  * @param {Object} res - Express response object
  * @returns {Object} - List of tasks with daily updates
  */
-/**
- * Get all tasks with daily updates and filters
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} - List of tasks with daily updates
- */
 async getAllTasksWithDailyUpdates(req, res) {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -398,6 +392,7 @@ async getAllTasksWithDailyUpdates(req, res) {
     const filters = {
       task_id: req.query.task_id ? parseInt(req.query.task_id) : null,
       project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
+      assignee_id: req.query.assignee_id ? parseInt(req.query.assignee_id) : null,
       created_by: req.query.created_by ? parseInt(req.query.created_by) : null,
       update_date_start: req.query.update_date_start,
       update_date_end: req.query.update_date_end

@@ -804,7 +804,7 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  *                 client_id: 3
  *                 start_date: "2024-01-15"
  *                 end_date: "2024-06-15"
- *                 project_type: "web_development"
+ 
  *                 status: "planning"
  *             mobile_app_without_client:
  *               summary: Mobile App Project without Client
@@ -813,7 +813,7 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  *                 title: "Task Management App"
  *                 start_date: "2024-02-01"
  *                 end_date: "2024-08-01"
- *                 project_type: "mobile_app"
+ 
  *                 status: "planning"
  *             consulting_with_client:
  *               summary: Consulting Project with Client
@@ -823,7 +823,7 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  *                 client_id: 7
  *                 start_date: "2024-03-01"
  *                 end_date: "2024-05-01"
- *                 project_type: "consulting"
+ 
  *                 status: "in_progress"
  *             internal_project:
  *               summary: Internal Project
@@ -832,7 +832,7 @@ router.get('/:id', authenticateToken, ProjectController.getProjectById);
  *                 title: "Company Website Redesign"
  *                 start_date: "2024-04-01"
  *                 end_date: "2024-07-01"
- *                 project_type: "internal"
+ 
  *                 status: "planning"
  *     responses:
  *       201:
@@ -962,13 +962,7 @@ router.post('/', [
     .withMessage('End date is required')
     .isISO8601()
     .withMessage('End date must be a valid date'),
-  check('project_type')
-    .notEmpty()
-    .withMessage('Project type is required')
-    .isString()
-    .withMessage('Project type must be a string')
-    .isLength({ max: 100 })
-    .withMessage('Project type must not exceed 100 characters'),
+ 
   check('status')
     .notEmpty()
     .withMessage('Status is required')
