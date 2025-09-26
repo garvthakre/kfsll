@@ -483,21 +483,20 @@ async getAllVendorsWithDailyUpdates(req, res) {
   }
 },
 /**
- * Get tasks pending verification by vendor
+ * Get tasks pending verification by project ID
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @returns {Object} - List of tasks pending verification
  */
 async getTasksPendingVerification(req, res) {
   try {
-    const vendorUserId = req.user.id;
+    const projectId = parseInt(req.params.project_id);
 
-    // // Verify user is a vendor
-    // if (req.user.role !== 'vendor') {
-    //   return res.status(403).json({
-    //     message: 'Access denied. Only vendors can access this resource.'
-    //   });
-    // }
+    if (!projectId) {
+      return res.status(400).json({
+        message: 'Project ID is required'
+      });
+    }
 
     const query = `
       SELECT 
@@ -508,18 +507,11 @@ async getTasksPendingVerification(req, res) {
       JOIN tasks t ON du.task_id = t.id
       JOIN users u ON t.assignee_id = u.id
       WHERE du.status = 'completed_not_verified'
-        AND t.created_by = $1   -- only tasks created by this vendor
+        AND t.project_id = $1
       ORDER BY du.created_at DESC
     `;
 
-    const { rows } = await db.query(query, [vendorUserId]);
-
-    // if (rows.length === 0) {
-    //   return res.status(404).json({
-    //     message: 'No tasks pending verification for this vendor',
-    //     tasks: []
-    //   });
-    // }
+    const { rows } = await db.query(query, [projectId]);
 
     return res.status(200).json({
       message: 'Tasks pending verification retrieved successfully',
@@ -531,8 +523,7 @@ async getTasksPendingVerification(req, res) {
       message: 'Server error while fetching tasks pending verification'
     });
   }
-}
-,
+},
 
 /**
  * Verify task completion by vendor

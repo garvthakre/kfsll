@@ -407,16 +407,24 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
 
 /**
  * @swagger
- * /api/tasks/pending-verification:
+ * /api/tasks/pending-verification/{project_id}:
  *   get:
- *     summary: Get tasks pending verification by vendor
- *     description: Retrieve tasks where consultants have marked daily updates as completed but vendor hasn't verified yet. Only accessible by vendors.
+ *     summary: Get tasks pending verification by project ID
+ *     description: Retrieve tasks where consultants have marked daily updates as completed but haven't been verified yet for a specific project.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: project_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Project ID to filter tasks
+ *         example: 1
  *     responses:
  *       200:
- *         description: Tasks pending vendor verification
+ *         description: Tasks pending verification for the project
  *         content:
  *           application/json:
  *             schema:
@@ -429,14 +437,16 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/PendingVerificationTask'
- *       403:
- *         description: Access denied - only vendors can access this resource
+ *       400:
+ *         description: Project ID is required
  *       401:
  *         description: Not authenticated
  *       500:
  *         description: Server error
  */
-router.get('/pending-verification', authenticateToken, TaskController.getTasksPendingVerification);
+router.get('/pending-verification/:project_id', authenticateToken, TaskController.getTasksPendingVerification);
+
+
 /**
  * @swagger
  * /api/tasks/my:
