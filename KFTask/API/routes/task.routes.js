@@ -32,7 +32,7 @@ const router = express.Router();
  *           minimum: 1
  *           maximum: 5
  *           description: Rating for the task (1-5). Only saved when verified is true
- *           example: 4.5
+ *           example: 4
  *     PendingVerificationTask:
  *       type: object
  *       properties:
@@ -654,6 +654,141 @@ router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDT
 router.get('/daily-updates', authenticateToken, TaskController.getAllTasksWithDailyUpdates);
 /**
  * @swagger
+ * /api/tasks/vendor-updates:
+ *   get:
+ *     summary: Get all vendors with daily updates and filters
+ *     description: Retrieve all vendors that have daily updates with project info and filtering options. Use limit=0 or limit=all to get all results without pagination.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination (ignored if limit=0 or limit=all)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: string
+ *           default: "10"
+ *         description: Number of results per page. Use 0 or "all" to get all results  
+ *       - in: query
+ *         name: vendor_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by specific vendor ID
+ *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by project ID
+ *       - in: query
+ *         name: assignee_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by assignee's user ID
+ *       - in: query
+ *         name: update_date_start
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter daily updates from this date onwards (YYYY-MM-DD)
+ *       - in: query
+ *         name: update_date_end
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter daily updates up to this date (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: List of vendors with daily updates
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - type: object
+ *                   properties:
+ *                     vendors:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                             description: Vendor ID
+ *                             example: 0
+ *                           name:
+ *                             type: string
+ *                             description: Vendor name
+ *                             example: "ABC Supplies Ltd"
+ *                           project_id:
+ *                             type: integer
+ *                             description: Project ID
+ *                             example: 0
+ *                           project_name:
+ *                             type: string
+ *                             description: Project name
+ *                             example: "Website Development"
+ *                           assignee_id:
+ *                             type: integer
+ *                             description: Assignee user ID
+ *                             example: 0
+ *                           status:
+ *                             type: string
+ *                             description: Vendor status
+ *                             example: "active"
+ *                           due_date:
+ *                             type: string
+ *                             format: date
+ *                             description: Vendor due date
+ *                             example: "2024-02-15"
+ *                           created_at:
+ *                             type: string
+ *                             format: date-time
+ *                             description: Vendor creation date
+ *                           updated_at:
+ *                             type: string
+ *                             format: date-time
+ *                             description: Last update date
+ *                           daily_updates_count:
+ *                             type: integer
+ *                             description: Number of daily updates for this vendor
+ *                             example: 5
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         total:
+ *                           type: integer
+ *                           example: 25
+ *                         page:
+ *                           type: integer
+ *                           example: 1
+ *                         limit:
+ *                           type: integer
+ *                           example: 10
+ *                         pages:
+ *                           type: integer
+ *                           example: 3
+ *                 - type: object
+ *                   properties:
+ *                     vendors:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Vendor'
+ *                     total:
+ *                       type: integer
+ *                       example: 50
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+
+router.get('/vendor-updates', authenticateToken, TaskController.getAllVendorsWithDailyUpdates);
+/**
+ * @swagger
  * /api/tasks/ids-titles:
  *   get:
  *     summary: Get all tasks (ID and title only)
@@ -991,7 +1126,7 @@ router.get('/:id', authenticateToken, TaskController.getTaskById);
  *                 rating:
  *                   type: number
  *                   description: Rating given (only when verified is true)
- *                   example: 4.5
+ *                   example: 4
  *       400:
  *         description: Validation error or no completed daily update found
  *       403:

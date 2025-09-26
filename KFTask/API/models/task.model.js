@@ -537,6 +537,7 @@ async countTotalWithDailyUpdates(filters = {}) {
     const { rows } = await db.query(query, values);
     return rows[0];
   },
+ 
 
   /**
    * Get comments for a task
