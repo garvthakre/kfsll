@@ -56,6 +56,7 @@ async findAllByUser(userId, limit, offset) {
     LEFT JOIN users c ON t.created_by = c.id
     WHERE (t.created_by = $1 OR t.assignee_id = $1)
     AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
+    AND t.status != 'completed'
     ORDER BY t.due_date ASC
     LIMIT $2 OFFSET $3
   `;
@@ -87,7 +88,8 @@ const tasksQuery = `
   FROM tasks t
      WHERE (t.created_by = $1 OR t.assignee_id = $1)
     AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
-  ORDER BY due_date ASC
+ AND t.status != 'completed'
+    ORDER BY due_date ASC
   
 `;
 
@@ -118,7 +120,7 @@ const countQuery = `
     const query = `
       SELECT id, title
       FROM tasks t
-        
+     AND t.status != 'completed'   
      WHERE (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
       ORDER BY id ASC
     `;
@@ -161,7 +163,7 @@ const countQuery = `
       LEFT JOIN users a ON t.assignee_id = a.id
       LEFT JOIN users c ON t.created_by = c.id
       WHERE 1=1
-         
+      AND t.status != 'completed'   
     AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
     `;
     
@@ -316,7 +318,7 @@ const countQuery = `
    * Count total tasks
    */
   async countTotal(filters = {}) {
-    let query = 'SELECT COUNT(*) FROM tasks t WHERE 1=1 AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)';
+    let query = 'SELECT COUNT(*) FROM tasks t WHERE 1=1 AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE) AND t.status != \'completed\'';
     const queryParams = [];
     let paramIndex = 1;
 
@@ -410,6 +412,7 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
       t.updated_at,
       (SELECT COUNT(*) FROM daily_updates WHERE task_id = t.id) as daily_updates_count
     FROM tasks t
+    AND t.status != 'completed'
     LEFT JOIN projects p ON t.project_id = p.id
     LEFT JOIN users a ON t.assignee_id = a.id
     LEFT JOIN users c ON t.created_by = c.id
@@ -478,6 +481,7 @@ async countTotalWithDailyUpdates(filters = {}) {
     SELECT COUNT(DISTINCT t.id) as total
     FROM tasks t
     INNER JOIN daily_updates du ON t.id = du.task_id
+    AND t.status != 'completed'
     WHERE 1=1
   `;
   
