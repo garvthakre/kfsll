@@ -408,7 +408,7 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
       t.status,
       t.due_date,
       t.created_at,
-      t.updated_at,
+      t.updated_at ,
       (SELECT COUNT(*) FROM daily_updates WHERE task_id = t.id) as daily_updates_count
     FROM tasks t
     LEFT JOIN projects p ON t.project_id = p.id
