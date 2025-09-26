@@ -251,7 +251,7 @@ const countQuery = `
 
     const { rows } = await db.query(query, queryParams);
     return rows;
-  },
+   },
 
   /**
    * Update task information
