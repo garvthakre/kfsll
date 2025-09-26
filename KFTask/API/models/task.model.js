@@ -66,6 +66,7 @@ async findAllByUser(userId, limit, offset) {
     FROM tasks t
     WHERE (t.created_by = $1 OR t.assignee_id = $1)
     AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
+    AND t.status != 'completed'
   `;
 
   const [tasksResult, countResult] = await Promise.all([
@@ -77,31 +78,30 @@ async findAllByUser(userId, limit, offset) {
     tasks: tasksResult.rows,
     total: parseInt(countResult.rows[0].total, 10)
   };
-}
-,
+},
+
   /**
    * Find all tasks where user is assignee or creator (no filters)
    */
-async findAllByUserIDANDTITLES(userId ) {
-const tasksQuery = `
-  SELECT id, title
-  FROM tasks t
-     WHERE (t.created_by = $1 OR t.assignee_id = $1)
+async findAllByUserIDANDTITLES(userId) {
+  const tasksQuery = `
+    SELECT id, title
+    FROM tasks t
+    WHERE (t.created_by = $1 OR t.assignee_id = $1)
     AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
- AND t.status != 'completed'
+    AND t.status != 'completed'
     ORDER BY due_date ASC
-  
-`;
+  `;
 
-const countQuery = `
-  SELECT COUNT(*) AS total
-  FROM tasks t
-     WHERE (t.created_by = $1 OR t.assignee_id = $1)
+  const countQuery = `
+    SELECT COUNT(*) AS total
+    FROM tasks t
+    WHERE (t.created_by = $1 OR t.assignee_id = $1)
     AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
-`;
+    AND t.status != 'completed'
+  `;
 
-
-  const [tasksResult, countResult] =  await Promise.all([
+  const [tasksResult, countResult] = await Promise.all([
     db.query(tasksQuery, [userId]),
     db.query(countQuery, [userId])
   ]);
@@ -110,8 +110,7 @@ const countQuery = `
     tasks: tasksResult.rows,
     total: parseInt(countResult.rows[0].total, 10)
   };
-}
-,
+},
 
   /**
    * Get all task IDs and titles
@@ -120,8 +119,8 @@ const countQuery = `
     const query = `
       SELECT id, title
       FROM tasks t
-     AND t.status != 'completed'   
-     WHERE (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
+      WHERE (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
+      AND t.status != 'completed'
       ORDER BY id ASC
     `;
     const { rows } = await db.query(query);
@@ -164,7 +163,7 @@ const countQuery = `
       LEFT JOIN users c ON t.created_by = c.id
       WHERE 1=1
       AND t.status != 'completed'   
-    AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
+      AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
     `;
     
     const queryParams = [];
@@ -412,12 +411,12 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
       t.updated_at,
       (SELECT COUNT(*) FROM daily_updates WHERE task_id = t.id) as daily_updates_count
     FROM tasks t
-    AND t.status != 'completed'
     LEFT JOIN projects p ON t.project_id = p.id
     LEFT JOIN users a ON t.assignee_id = a.id
     LEFT JOIN users c ON t.created_by = c.id
     INNER JOIN daily_updates du ON t.id = du.task_id
     WHERE 1=1
+    AND t.status != 'completed'
   `;
   
   const queryParams = [];
@@ -481,8 +480,8 @@ async countTotalWithDailyUpdates(filters = {}) {
     SELECT COUNT(DISTINCT t.id) as total
     FROM tasks t
     INNER JOIN daily_updates du ON t.id = du.task_id
-    AND t.status != 'completed'
     WHERE 1=1
+    AND t.status != 'completed'
   `;
   
   const queryParams = [];
@@ -528,6 +527,24 @@ async countTotalWithDailyUpdates(filters = {}) {
   const { rows } = await db.query(query, queryParams);
   return parseInt(rows[0].total);
 },
+
+  /**
+   * Add comment to task
+   */
+  async addComment(commentData) {
+    const { task_id, user_id, content } = commentData;
+
+    const query = `
+      INSERT INTO task_comments (task_id, user_id, content)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `;
+
+    const values = [task_id, user_id, content];
+    const { rows } = await db.query(query, values);
+    return rows[0];
+  },
+
   /**
    * Get comments for a task
    */
