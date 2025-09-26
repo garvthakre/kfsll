@@ -41,23 +41,29 @@ async create(taskData) {
   return rows[0];
 },
 
-  /**
-   * Find all tasks where user is assignee or creator (no filters)
-   */
+/**
+ * Find all tasks where user is assignee or creator (no filters)
+ */
 async findAllByUser(userId, limit, offset) {
+  console.log('findAllByUser called with userId:', userId, 'type:', typeof userId);
+  
   const tasksQuery = `
     SELECT t.*,
       p.title as project_title,
       a.first_name || ' ' || a.last_name as assignee_name,
-      c.first_name || ' ' || c.last_name as creator_name
+      c.first_name || ' ' || c.last_name as creator_name,
+      t.assignee_id,
+      t.created_by
     FROM tasks t
     LEFT JOIN projects p ON t.project_id = p.id
     LEFT JOIN users a ON t.assignee_id = a.id
     LEFT JOIN users c ON t.created_by = c.id
     WHERE (t.created_by = $1 OR t.assignee_id = $1)
-    AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
     AND t.status != 'completed'
-    ORDER BY t.due_date ASC
+    ORDER BY 
+      CASE WHEN t.due_date IS NULL THEN 1 ELSE 0 END,
+      t.due_date ASC,
+      t.created_at DESC
     LIMIT $2 OFFSET $3
   `;
 
@@ -65,7 +71,6 @@ async findAllByUser(userId, limit, offset) {
     SELECT COUNT(*) as total
     FROM tasks t
     WHERE (t.created_by = $1 OR t.assignee_id = $1)
-    AND (t.due_date IS NULL OR t.due_date >= CURRENT_DATE)
     AND t.status != 'completed'
   `;
 
@@ -74,12 +79,14 @@ async findAllByUser(userId, limit, offset) {
     db.query(countQuery, [userId])
   ]);
 
+  console.log('Query results for userId', userId, ':', tasksResult.rows.length, 'tasks found');
+  
+
   return {
     tasks: tasksResult.rows,
     total: parseInt(countResult.rows[0].total, 10)
   };
 },
-
   /**
    * Find all tasks where user is assignee or creator (no filters)
    */
