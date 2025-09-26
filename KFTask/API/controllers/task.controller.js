@@ -492,12 +492,12 @@ async getTasksPendingVerification(req, res) {
   try {
     const vendorUserId = req.user.id;
 
-    // Verify user is a vendor
-    if (req.user.role !== 'vendor') {
-      return res.status(403).json({
-        message: 'Access denied. Only vendors can access this resource.'
-      });
-    }
+    // // Verify user is a vendor
+    // if (req.user.role !== 'vendor') {
+    //   return res.status(403).json({
+    //     message: 'Access denied. Only vendors can access this resource.'
+    //   });
+    // }
 
     const query = `
       SELECT 
