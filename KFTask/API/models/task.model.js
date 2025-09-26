@@ -258,7 +258,7 @@ const countQuery = `
    */
   async update(id, taskData) {
     const {
-      title,
+      title ,
       description,
       project_id,
       assignee_id,
