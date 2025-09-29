@@ -454,159 +454,168 @@ export const getProjectStatusReport = async (req, res, next) => {
 
 /**
  * Get vendor performance report with filtering and pagination
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @param {Function} next - Express next middleware function
- */
-/**
- * Get vendor performance report with filtering and pagination
+ * Shows projects with their tasks, dates and status
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
 export const getVendorPerformanceReport = async (req, res, next) => {
- try {
-     const vendorUserId = req.user.id;
-     const { consultant_id, task_status } = req.query;
- 
-     // Verify vendor exists
-     const vendor = await db.query(
-       'SELECT id FROM users WHERE id = $1 AND role = $2',
-       [vendorUserId, 'vendor']
-     );
- 
-     if (vendor.rows.length === 0) {
-       return res.status(404).json({
-         success: false,
-         message: 'Vendor profile not found for the logged-in user'
-       });
-     }
- 
-     // Get all consultants for dropdown
-     const allConsultants = await db.query(
-       `SELECT u.id, u.first_name || ' ' || u.last_name AS name
-        FROM users u
-        WHERE u.role = 'employee' AND u.working_for = $1
-        ORDER BY u.first_name, u.last_name`,
-       [vendorUserId]
-     );
- 
-     // Base query for consultant performance
-     let consultantQuery = `
-       SELECT 
-         u.id,
-         u.first_name || ' ' || u.last_name AS consultant_name,
-         COUNT(DISTINCT p.id) as total_projects,
-         COUNT(t.id) as total_tasks,
-         COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
-         COUNT(CASE WHEN t.status = 'in-progress' THEN 1 END) as in_progress_tasks,
-         COUNT(CASE WHEN t.status = 'pending' THEN 1 END) as pending_tasks
+  try {
+    const vendorUserId = req.user.id;
+    const { consultant_id, task_status } = req.query;
+
+    // Verify vendor exists
+    const vendor = await db.query(
+      'SELECT id FROM users WHERE id = $1 AND role = $2',
+      [vendorUserId, 'vendor']
+    );
+
+    if (vendor.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Vendor profile not found for the logged-in user'
+      });
+    }
+
+    // Get all consultants for dropdown
+    const allConsultants = await db.query(
+      `SELECT u.id, u.first_name || ' ' || u.last_name AS name
        FROM users u
-       LEFT JOIN task_assignments ta ON u.id = ta.user_id
-       LEFT JOIN tasks t ON ta.task_id = t.id
-       LEFT JOIN projects p ON t.project_id = p.id
        WHERE u.role = 'employee' AND u.working_for = $1
-     `;
- 
-     const queryParams = [vendorUserId];
-     let paramCount = 1;
- 
-     // Add consultant filter if specified
-     if (consultant_id) {
-       paramCount++;
-       consultantQuery += ` AND u.id = $${paramCount}`;
-       queryParams.push(consultant_id);
-     }
- 
-     consultantQuery += ` GROUP BY u.id, u.first_name, u.last_name ORDER BY u.first_name, u.last_name`;
- 
-     const consultantStats = await db.query(consultantQuery, queryParams);
- 
-     // Detailed task report query
-     let taskReportQuery = `
-       SELECT 
-         t.id as task_id,
-         t.title as task_title,
-         t.status,
-         t.due_date,
-         ta.assigned_at as assigned_date,
-         p.title as project_name,
-         u.id as consultant_id,
-         u.first_name || ' ' || u.last_name AS consultant_name
-       FROM tasks t
-       JOIN task_assignments ta ON t.id = ta.task_id
-       JOIN users u ON ta.user_id = u.id
-       JOIN projects p ON t.project_id = p.id
-       WHERE u.role = 'employee' AND u.working_for = $1
-     `;
- 
-     const taskQueryParams = [vendorUserId];
-     let taskParamCount = 1;
- 
-     // Add consultant filter
-     if (consultant_id) {
-       taskParamCount++;
-       taskReportQuery += ` AND u.id = $${taskParamCount}`;
-       taskQueryParams.push(consultant_id);
-     }
- 
-     // Add task status filter
-     if (task_status && task_status !== 'all') {
-       taskParamCount++;
-       taskReportQuery += ` AND t.status = $${taskParamCount}`;
-       taskQueryParams.push(task_status);
-     }
- 
-     taskReportQuery += ` ORDER BY t.due_date DESC, ta.assigned_at DESC`;
- 
-     const taskReport = await db.query(taskReportQuery, taskQueryParams);
- 
-     // Get project summary
-     let projectQuery = `
-       SELECT DISTINCT
-         p.id,
-         p.title as project_name,
-         p.status as project_status,
-         p.start_date,
-         p.end_date,
-         u.first_name || ' ' || u.last_name AS consultant_name
-       FROM projects p
-       JOIN tasks t ON p.id = t.project_id
-       JOIN task_assignments ta ON t.id = ta.task_id
-       JOIN users u ON ta.user_id = u.id
-       WHERE u.role = 'employee' AND u.working_for = $1
-     `;
- 
-     const projectQueryParams = [vendorUserId];
-     let projectParamCount = 1;
- 
-     if (consultant_id) {
-       projectParamCount++;
-       projectQuery += ` AND u.id = $${projectParamCount}`;
-       projectQueryParams.push(consultant_id);
-     }
- 
-     projectQuery += ` ORDER BY p.start_date DESC`;
- 
-     const projectReport = await db.query(projectQuery, projectQueryParams);
- 
-     res.status(200).json({
-       success: true,
-       data: {
-         consultants: allConsultants.rows,
-         consultant_stats: consultantStats.rows,
-         task_report: taskReport.rows,
-         project_report: projectReport.rows,
-         filters: {
-           selected_consultant: consultant_id || null,
-           selected_status: task_status || 'all'
-         }
-       }
-     });
-   } catch (error) {
-     next(error);
-   }
-};
+       ORDER BY u.first_name, u.last_name`,
+      [vendorUserId]
+    );
+
+    // Base query for consultant performance
+    let consultantQuery = `
+      SELECT 
+        u.id,
+        u.first_name || ' ' || u.last_name AS consultant_name,
+        COUNT(DISTINCT p.id) as total_projects,
+        COUNT(t.id) as total_tasks,
+        COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
+        COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks,
+        COUNT(CASE WHEN t.status = 'todo' THEN 1 END) as pending_tasks
+      FROM users u
+      LEFT JOIN task_assignments ta ON u.id = ta.user_id
+      LEFT JOIN tasks t ON ta.task_id = t.id
+      LEFT JOIN projects p ON t.project_id = p.id
+      WHERE u.role = 'employee' AND u.working_for = $1
+    `;
+
+    const queryParams = [vendorUserId];
+    let paramCount = 1;
+
+    // Add consultant filter if specified
+    if (consultant_id) {
+      paramCount++;
+      consultantQuery += ` AND u.id = $${paramCount}`;
+      queryParams.push(consultant_id);
+    }
+
+    consultantQuery += ` GROUP BY u.id, u.first_name, u.last_name ORDER BY u.first_name, u.last_name`;
+
+    const consultantStats = await db.query(consultantQuery, queryParams);
+
+    // Get projects with their tasks
+    let projectQuery = `
+      SELECT DISTINCT
+        p.id as project_id,
+        p.title as project_name,
+        p.status as project_status,
+        p.start_date,
+        p.end_date,
+        u.id as consultant_id,
+        u.first_name || ' ' || u.last_name AS consultant_name
+      FROM projects p
+      JOIN tasks t ON p.id = t.project_id
+      JOIN task_assignments ta ON t.id = ta.task_id
+      JOIN users u ON ta.user_id = u.id
+      WHERE u.role = 'employee' AND u.working_for = $1
+    `;
+
+    const projectQueryParams = [vendorUserId];
+    let projectParamCount = 1;
+
+    if (consultant_id) {
+      projectParamCount++;
+      projectQuery += ` AND u.id = $${projectParamCount}`;
+      projectQueryParams.push(consultant_id);
+    }
+
+    projectQuery += ` ORDER BY p.start_date DESC`;
+
+    const projectsResult = await db.query(projectQuery, projectQueryParams);
+
+    // For each project, get its tasks
+    const projectsWithTasks = await Promise.all(
+      projectsResult.rows.map(async (project) => {
+        let taskQuery = `
+          SELECT 
+            t.id as task_id,
+            t.title as task_title,
+            t.status,
+            t.due_date,
+            t.created_at,
+            ta.assigned_at as assigned_date,
+            u.id as consultant_id,
+            u.first_name || ' ' || u.last_name AS consultant_name
+          FROM tasks t
+          JOIN task_assignments ta ON t.id = ta.task_id
+          JOIN users u ON ta.user_id = u.id
+          WHERE t.project_id = $1 
+            AND u.role = 'employee' 
+            AND u.working_for = $2
+        `;
+
+        const taskQueryParams = [project.project_id, vendorUserId];
+        let taskParamCount = 2;
+
+        // Add consultant filter
+        if (consultant_id) {
+          taskParamCount++;
+          taskQuery += ` AND u.id = $${taskParamCount}`;
+          taskQueryParams.push(consultant_id);
+        }
+
+        // Add task status filter
+        if (task_status && task_status !== 'all') {
+          taskParamCount++;
+          taskQuery += ` AND t.status = $${taskParamCount}`;
+          taskQueryParams.push(task_status);
+        }
+
+        taskQuery += ` ORDER BY t.due_date DESC`;
+
+        const tasksResult = await db.query(taskQuery, taskQueryParams);
+
+        return {
+          project_id: project.project_id,
+          project_name: project.project_name,
+          project_status: project.project_status,
+          start_date: project.start_date,
+          end_date: project.end_date,
+          tasks: tasksResult.rows
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        consultants: allConsultants.rows,
+        consultant_stats: consultantStats.rows,
+        projects: projectsWithTasks,
+        filters: {
+          selected_consultant: consultant_id || null,
+          selected_status: task_status || 'all'
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
 /**
  * Export report to CSV/Excel
@@ -632,7 +641,7 @@ export const exportReport = async (req, res, next) => {
       });
     }
     
-    // For exports, we typically want all data, not paginated
+    
     // Create a modified request object with the filters in query and no pagination
     const modifiedReq = {
       ...req,

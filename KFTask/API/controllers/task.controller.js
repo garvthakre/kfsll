@@ -384,14 +384,15 @@ async getAllTasksWithDailyUpdates(req, res) {
     }
 
     // Build filters object from query parameters
-    const filters = {
-      task_id: req.query.task_id ? parseInt(req.query.task_id) : null,
-      project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
-      assignee_id: req.query.assignee_id ? parseInt(req.query.assignee_id) : null,
-      created_by: req.query.created_by ? parseInt(req.query.created_by) : null,
-      update_date_start: req.query.update_date_start,
-      update_date_end: req.query.update_date_end
-    };
+const filters = {
+  task_id: req.query.task_id ? parseInt(req.query.task_id) : null,
+  project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
+  assignee_id: req.query.assignee_id ? parseInt(req.query.assignee_id) : null,
+  created_by: req.query.created_by ? parseInt(req.query.created_by) : null,
+  working_for: req.query.working_for ? parseInt(req.query.working_for) : null, // ADD THIS LINE
+  update_date_start: req.query.update_date_start,
+  update_date_end: req.query.update_date_end
+};
 
     // Remove undefined filters
     Object.keys(filters).forEach(key => {

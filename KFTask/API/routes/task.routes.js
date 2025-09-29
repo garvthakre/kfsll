@@ -577,7 +577,6 @@ router.get('/my', authenticateToken, TaskController.getMyTasks);
  */
 router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDTITLES);
  
-
 /**
  * @swagger
  * /api/tasks/daily-updates:
@@ -620,6 +619,11 @@ router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDT
  *         schema:
  *           type: integer
  *         description: Filter by task creator's user ID
+ *       - in: query
+ *         name: working_for
+ *         schema:
+ *           type: integer
+ *         description: Filter by working_for user ID (vendor relationship)
  *       - in: query
  *         name: update_date_start
  *         schema:
@@ -726,6 +730,7 @@ router.get('/my-tasksid', authenticateToken, TaskController.getMyTasksWITHIDANDT
  */
 
 router.get('/daily-updates', authenticateToken, TaskController.getAllTasksWithDailyUpdates);
+
 /**
  * @swagger
  * /api/tasks/vendor-updates:

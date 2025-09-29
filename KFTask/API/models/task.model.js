@@ -455,12 +455,21 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
     queryParams.push(filters.assignee_id);
     paramIndex++;
   }
+  
+ 
 
+ 
   if (filters.created_by) {
     query += ` AND t.created_by = $${paramIndex}`;
     queryParams.push(filters.created_by);
     paramIndex++;
   }
+
+  if (filters.working_for) {
+  query += ` AND a.working_for = $${paramIndex}`;
+  queryParams.push(filters.working_for);
+  paramIndex++;
+}
 
   if (filters.update_date_start) {
     query += ` AND du.update_date >= $${paramIndex}`;
@@ -526,6 +535,11 @@ async countTotalWithDailyUpdates(filters = {}) {
     queryParams.push(filters.created_by);
     paramIndex++;
   }
+  if (filters.working_for) {
+  query += ` AND a.working_for = $${paramIndex}`;
+  queryParams.push(filters.working_for);
+  paramIndex++;
+}
 
   if (filters.update_date_start) {
     query += ` AND du.update_date >= $${paramIndex}`;
