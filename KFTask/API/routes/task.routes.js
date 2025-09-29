@@ -468,7 +468,7 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
  *       500:
  *         description: Server error
  */
-router.get('/my-projectsrTask', authenticateToken, TaskController.getMyProjectsTask);
+router.get('/my-projectsTask', authenticateToken, TaskController.getMyProjectsTask);
 /**
  * @swagger
  * /api/tasks/pending-verification/{project_id}:
