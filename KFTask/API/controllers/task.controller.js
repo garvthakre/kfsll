@@ -191,96 +191,102 @@ async getAllTaskIdsAndTitles(req, res) {
     }
   },
 
-  /**
-   * Update a task
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @returns {Object} - Updated task details
-   */
-  async updateTask(req, res) {
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
+/**
+ * Update a task (with ID validation)
+ */
+async updateTask(req, res) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-      const taskId = parseInt(req.params.id);
-      
-      // Check if task exists
-      const existingTask = await TaskModel.findById(taskId);
-      if (!existingTask) {
-        return res.status(404).json({ message: 'Task not found' });
-      }
-
-      // Check if user has permission to update the task
-      const isAdmin = req.user.role === 'admin';
-      const isManager = req.user.role === 'manager';
-      const isCreator = existingTask.created_by === req.user.id;
-      const isAssignee = existingTask.assignee_id === req.user.id;
-      
-      if (!isAdmin && !isManager && !isCreator && !isAssignee) {
-        return res.status(403).json({
-          message: 'You do not have permission to update this task'
-        });
-      }
-
-      // Update task
-      const updatedTask = await TaskModel.update(taskId, req.body);
-
-      // Log task update
-      await db.query(
-        'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
-        [taskId, req.user.id, 'update', `Task "${updatedTask.title}" updated`]
-      );
-
-      return res.status(200).json({
-        message: 'Task updated successfully',
-        task: updatedTask
+    const taskId = parseInt(req.params.id);
+    
+    // Validate task ID
+    if (isNaN(taskId) || taskId <= 0) {
+      return res.status(400).json({ 
+        message: 'Invalid task ID. Must be a valid integer.' 
       });
-    } catch (error) {
-      console.error('Update task error:', error);
-      return res.status(500).json({ message: 'Server error while updating task' });
     }
-  },
-
-  /**
-   * Delete a task
-   * @param {Object} req - Express request object
-   * @param {Object} res - Express response object
-   * @returns {Object} - Success message
-   */
-  async deleteTask(req, res) {
-    try {
-      const taskId = parseInt(req.params.id);
-
-      // Check if task exists
-      const task = await TaskModel.findById(taskId);
-      if (!task) {
-        return res.status(404).json({ message: 'Task not found' });
-      }
-
-      // Check if user has permission to delete the task
-      const isAdmin = req.user.role === 'admin';
-      const isManager = req.user.role === 'manager';
-      const isCreator = task.created_by === req.user.id;
-      
-      if (!isAdmin && !isManager && !isCreator) {
-        return res.status(403).json({
-          message: 'You do not have permission to delete this task'
-        });
-      }
-
-      // Delete task
-      await TaskModel.delete(taskId);
-
-      return res.status(200).json({ message: 'Task deleted successfully' });
-    } catch (error) {
-      console.error('Delete task error:', error);
-      return res.status(500).json({ message: 'Server error while deleting task' });
+    
+    // Check if task exists
+    const existingTask = await TaskModel.findById(taskId);
+    if (!existingTask) {
+      return res.status(404).json({ message: 'Task not found' });
     }
-  },
-/// Updated portions of TaskController with verification changes
 
+    // Check if user has permission to update the task
+    const isAdmin = req.user.role === 'admin';
+    const isManager = req.user.role === 'manager';
+    const isCreator = existingTask.created_by === req.user.id;
+    const isAssignee = existingTask.assignee_id === req.user.id;
+    
+    if (!isAdmin && !isManager && !isCreator && !isAssignee) {
+      return res.status(403).json({
+        message: 'You do not have permission to update this task'
+      });
+    }
+
+    // Update task
+    const updatedTask = await TaskModel.update(taskId, req.body);
+
+    // Log task update
+    await db.query(
+      'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
+      [taskId, req.user.id, 'update', `Task "${updatedTask.title}" updated`]
+    );
+
+    return res.status(200).json({
+      message: 'Task updated successfully',
+      task: updatedTask
+    });
+  } catch (error) {
+    console.error('Update task error:', error);
+    return res.status(500).json({ message: 'Server error while updating task' });
+  }
+},
+
+/**
+ * Delete a task (with ID validation)
+ */
+async deleteTask(req, res) {
+  try {
+    const taskId = parseInt(req.params.id);
+    
+    // Validate task ID
+    if (isNaN(taskId) || taskId <= 0) {
+      return res.status(400).json({ 
+        message: 'Invalid task ID. Must be a valid integer.' 
+      });
+    }
+
+    // Check if task exists
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Check if user has permission to delete the task
+    const isAdmin = req.user.role === 'admin';
+    const isManager = req.user.role === 'manager';
+    const isCreator = task.created_by === req.user.id;
+    
+    if (!isAdmin && !isManager && !isCreator) {
+      return res.status(403).json({
+        message: 'You do not have permission to delete this task'
+      });
+    }
+
+    // Delete task
+    await TaskModel.delete(taskId);
+
+    return res.status(200).json({ message: 'Task deleted successfully' });
+  } catch (error) {
+    console.error('Delete task error:', error);
+    return res.status(500).json({ message: 'Server error while deleting task' });
+  }
+},
 /**
  * Add daily update to task
  * @param {Object} req - Express request object
@@ -524,7 +530,24 @@ async getTasksPendingVerification(req, res) {
     });
   }
 },
+/**
+ * Get projects where user has assigned tasks
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+async getMyProjectsTask(req, res) {
+  try {
+    const userId = req.user.id;
+    const projects = await TaskModel.getMyProjectsTask(userId);
 
+    return res.status(200).json({
+      projects
+    });
+  } catch (error) {
+    console.error('Get my projects error:', error);
+    return res.status(500).json({ message: 'Server error while fetching projects' });
+  }
+} ,
 /**
  * Verify task completion by vendor
  * @param {Object} req - Express request object
@@ -681,7 +704,7 @@ async getDailyUpdates(req, res) {
 },
  
 
-// Replace the existing getTaskById method in TaskController with this updated version:
+ 
 
 /**
  * Get task by ID
@@ -690,35 +713,40 @@ async getDailyUpdates(req, res) {
  * @returns {Object} - Task details
  */
 async getTaskById(req, res) {
-    try {
-      const taskId = parseInt(req.params.id);
-      
-      const task = await TaskModel.findById(taskId);
-      
-      if (!task) {
-        return res.status(404).json({ message: 'Task not found' });
-      }
-
-      // Get feedback (comments) for task
-      const feedback = await TaskModel.getComments(taskId);
-      task.feedback = feedback;
-
-      // Get time entries for task
-      const timeEntries = await TaskModel.getTimeEntries(taskId);
-      task.time_entries = timeEntries;
-
-      // Get daily updates for task
-      const dailyUpdates = await TaskModel.getDailyUpdates(taskId);
-      task.daily_updates = dailyUpdates;
-
-      return res.status(200).json({ task });
-    } catch (error) {
-      console.error('Get task by ID error:', error);
-      return res.status(500).json({ message: 'Server error while fetching task' });
+  try {
+    const taskId = parseInt(req.params.id);
+    
+    // Validate task ID
+    if (isNaN(taskId) || taskId <= 0) {
+      return res.status(400).json({ 
+        message: 'Invalid task ID. Must be a valid integer.' 
+      });
     }
-  },
- 
- 
+    
+    const task = await TaskModel.findById(taskId);
+    
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    // Get feedback (comments) for task
+    const feedback = await TaskModel.getComments(taskId);
+    task.feedback = feedback;
+
+    // Get time entries for task
+    const timeEntries = await TaskModel.getTimeEntries(taskId);
+    task.time_entries = timeEntries;
+
+    // Get daily updates for task
+    const dailyUpdates = await TaskModel.getDailyUpdates(taskId);
+    task.daily_updates = dailyUpdates;
+
+    return res.status(200).json({ task });
+  } catch (error) {
+    console.error('Get task by ID error:', error);
+    return res.status(500).json({ message: 'Server error while fetching task' });
+  }
+},
 /**
  * Add feedback to task
  * @param {Object} req - Express request object

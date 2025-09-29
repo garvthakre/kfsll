@@ -404,7 +404,71 @@ const router = express.Router();
  *         description: Server error
  */
 router.get('/stats', authenticateToken, TaskController.getTaskStats);
-
+/**
+ * @swagger
+ * /api/tasks/my-projectsTask:
+ *   get:
+ *     summary: Get projects where user has assigned tasks
+ *     description: Retrieve all projects that have tasks assigned to the current user
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of projects with assigned tasks
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 projects:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: Project ID
+ *                       title:
+ *                         type: string
+ *                         description: Project title
+ *                       task_count:
+ *                         type: integer
+ *                         description: Number of tasks assigned to user in this project
+ *                       tasks:
+ *                         type: array
+ *                         description: List of tasks in this project
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             id:
+ *                               type: integer
+ *                               description: Task ID
+ *                             title:
+ *                               type: string
+ *                               description: Task title
+ *             example:
+ *               projects:
+ *                 - id: 1
+ *                   title: "Website Development"
+ *                   task_count: 5
+ *                   tasks:
+ *                     - id: 101
+ *                       title: "Create homepage"
+ *                     - id: 102
+ *                       title: "Setup database"
+ *                 - id: 2
+ *                   title: "Mobile App"
+ *                   task_count: 3
+ *                   tasks:
+ *                     - id: 201
+ *                       title: "Design login screen"
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/my-projectsrTask', authenticateToken, TaskController.getMyProjectsTask);
 /**
  * @swagger
  * /api/tasks/pending-verification/{project_id}:
@@ -786,7 +850,7 @@ router.get('/daily-updates', authenticateToken, TaskController.getAllTasksWithDa
  *                     vendors:
  *                       type: array
  *                       items:
- *                         $ref: '#/components/schemas/Vendor'
+ *                         $ref: '#/components/schemas/Task'
  *                     total:
  *                       type: integer
  *                       example: 50

@@ -384,7 +384,29 @@ async findAllByUserIDANDTITLES(userId) {
     return parseInt(rows[0].count);
   },
  
+async getMyProjectsTask(userId) {
+  const query = `
+    SELECT 
+      p.id,
+      p.title,
+      json_agg(
+        json_build_object(
+          'id', t.id,
+          'title', t.title
+        ) ORDER BY t.id
+      ) as tasks,
+      COUNT(t.id) as task_count
+    FROM projects p
+    INNER JOIN tasks t ON p.id = t.project_id
+    WHERE t.assignee_id = $1
+      AND t.status != 'completed'
+    GROUP BY p.id, p.title
+    ORDER BY p.title ASC
+  `;
 
+  const { rows } = await db.query(query, [userId]);
+  return rows;
+},
 /**
  * Find all tasks that have daily updates with pagination and filters
  */
