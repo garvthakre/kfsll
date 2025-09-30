@@ -770,11 +770,12 @@ async addFeedback(req, res) {
       return res.status(404).json({ message: 'Task not found' });
     }
 
-    // Add feedback
+    // Add feedback with 'pending' status
     const feedback = await TaskModel.addComment({
       task_id: taskId,
       user_id: req.user.id,
-      content
+      content,
+      reply_status: 'pending'  // Set status to pending when feedback is created
     });
 
     // Get user details for response
@@ -785,6 +786,7 @@ async addFeedback(req, res) {
     
     feedback.user_name = rows[0].user_name;
     feedback.profile_image = rows[0].profile_image;
+    feedback.reply_status = 'pending'; // Include status in response
 
     // Log feedback activity
     await db.query(
@@ -801,13 +803,10 @@ async addFeedback(req, res) {
     return res.status(500).json({ message: 'Server error while adding feedback' });
   }
 },
-
-// Replace the existing getComments method with this (renamed to getFeedback):
+ 
 /**
  * Get feedback for task
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} - List of feedback
+ * Shows reply_status for each feedback
  */
 async getFeedback(req, res) {
   try {
@@ -830,6 +829,7 @@ async getFeedback(req, res) {
     return res.status(500).json({ message: 'Server error while fetching feedback' });
   }
 },
+
   /**
    * Add comment to task
    * @param {Object} req - Express request object
@@ -883,11 +883,10 @@ async getFeedback(req, res) {
       return res.status(500).json({ message: 'Server error while adding comment' });
     }
   },
+ 
 /**
  * Add reply to feedback
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} - New reply details
+ 
  */
 async addFeedbackReply(req, res) {
   try {
@@ -899,16 +898,9 @@ async addFeedbackReply(req, res) {
     const feedbackId = parseInt(req.params.feedback_id);
     const { content } = req.body;
 
-    // Check if user is admin or vendor
-    // if (req.user.role !== 'admin' && req.user.role !== 'vendor') {
-    //   return res.status(403).json({ 
-    //     message: 'Only admins and vendors can reply to feedback' 
-    //   });
-    // }
-
     // Check if feedback exists and get task_id
     const feedbackQuery = await db.query(
-      'SELECT task_id FROM task_comments WHERE id = $1',
+      'SELECT task_id, reply_status FROM task_comments WHERE id = $1',
       [feedbackId]
     );
     
@@ -916,7 +908,15 @@ async addFeedbackReply(req, res) {
       return res.status(404).json({ message: 'Feedback not found' });
     }
 
-    const taskId = feedbackQuery.rows[0].task_id;
+    const feedback = feedbackQuery.rows[0];
+    const taskId = feedback.task_id;
+
+    // Check if feedback already has a reply
+    if (feedback.reply_status === 'replied') {
+      return res.status(400).json({ 
+        message: 'This feedback has already been replied to' 
+      });
+    }
 
     // Add reply
     const reply = await TaskModel.addFeedbackReply({
@@ -924,6 +924,12 @@ async addFeedbackReply(req, res) {
       user_id: req.user.id,
       content
     });
+
+    // Update feedback reply_status to 'replied'
+    await db.query(
+      'UPDATE task_comments SET reply_status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      ['replied', feedbackId]
+    );
 
     // Get user details for response
     const { rows } = await db.query(
@@ -943,14 +949,14 @@ async addFeedbackReply(req, res) {
 
     return res.status(201).json({
       message: 'Reply added successfully',
-      reply
+      reply,
+      feedback_status: 'replied'
     });
   } catch (error) {
     console.error('Add feedback reply error:', error);
     return res.status(500).json({ message: 'Server error while adding reply' });
   }
 },
-
 /**
  * Get replies for a feedback
  * @param {Object} req - Express request object

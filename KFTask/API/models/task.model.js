@@ -500,15 +500,15 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
  * Add reply to feedback
  */
 async addFeedbackReply(replyData) {
-  const { feedback_id, user_id, content } = replyData;
+  const { feedback_id, user_id, content, reply_status } = replyData;
 
   const query = `
-    INSERT INTO task_feedback_replies (feedback_id, user_id, content)
-    VALUES ($1, $2, $3)
+    INSERT INTO task_feedback_replies (feedback_id, user_id, content, reply_status)
+    VALUES ($1, $2, $3, $4)
     RETURNING *
   `;
 
-  const values = [feedback_id, user_id, content];
+  const values = [feedback_id, user_id, content, reply_status || 'pending'];
   const { rows } = await db.query(query, values);
   return rows[0];
 },
@@ -520,6 +520,7 @@ async getFeedbackReplies(feedbackId) {
   const query = `
     SELECT 
       tfr.*,
+      tfr.reply_status,
       u.first_name || ' ' || u.last_name as user_name,
       u.profile_image,
       u.role
@@ -593,23 +594,22 @@ async countTotalWithDailyUpdates(filters = {}) {
   return parseInt(rows[0].total);
 },
 
-  /**
-   * Add comment to task
-   */
-  async addComment(commentData) {
-    const { task_id, user_id, content } = commentData;
+/**
+ * Add comment to task
+ */
+async addComment(commentData) {
+  const { task_id, user_id, content, reply_status } = commentData;
 
-    const query = `
-      INSERT INTO task_comments (task_id, user_id, content)
-      VALUES ($1, $2, $3)
-      RETURNING *
-    `;
+  const query = `
+    INSERT INTO task_comments (task_id, user_id, content, reply_status)
+    VALUES ($1, $2, $3, $4)
+    RETURNING *
+  `;
 
-    const values = [task_id, user_id, content];
-    const { rows } = await db.query(query, values);
-    return rows[0];
-  },
- 
+  const values = [task_id, user_id, content, reply_status || 'pending'];
+  const { rows } = await db.query(query, values);
+  return rows[0];
+},
 
  /**
  * Get comments for a task (with replies)

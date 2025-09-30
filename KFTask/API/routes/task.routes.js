@@ -53,6 +53,15 @@ const router = express.Router();
  *           type: string
  *           format: date-time
  *           description: Reply last update timestamp
+ *     AddFeedbackRequest:
+ *       type: object
+ *       required:
+ *         - content
+ *       properties:
+ *         content:
+ *           type: string
+ *           description: Feedback content
+ *           example: "This task needs more clarification on requirements"
  *     AddReplyRequest:
  *       type: object
  *       required:
@@ -199,26 +208,50 @@ const router = express.Router();
  *       properties:
  *         id:
  *           type: integer
- *           description: Comment ID
+ *           description: Comment/Feedback ID
+ *           example: 1
  *         task_id:
  *           type: integer
  *           description: Task ID
+ *           example: 5
  *         user_id:
  *           type: integer
  *           description: User ID who made the comment
+ *           example: 3
  *         user_name:
  *           type: string
  *           description: User name
+ *           example: "John Doe"
  *         profile_image:
  *           type: string
  *           description: User profile image URL
+ *           example: "https://example.com/profile.jpg"
+ *         role:
+ *           type: string
+ *           description: User role
+ *           example: "consultant"
  *         content:
  *           type: string
  *           description: Comment content
+ *           example: "Need clarification on requirements"
+ *         reply_status:
+ *           type: string
+ *           enum: [pending, replied]
+ *           description: Status of feedback - 'pending' when created, 'replied' after admin/vendor responds
+ *           example: "pending"
+ *         replies:
+ *           type: array
+ *           description: Array of replies to this feedback
+ *           items:
+ *             $ref: '#/components/schemas/FeedbackReply'
  *         created_at:
  *           type: string
  *           format: date-time
  *           description: Comment creation date
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *           description: Last update date
  *     TimeEntry:
  *       type: object
  *       properties:
@@ -1423,7 +1456,7 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  * /api/tasks/{id}/feedback:
  *   get:
  *     summary: Get feedback for a task
- *     description: Retrieve all feedback/comments for a specific task
+ *     description: Retrieve all feedback/comments for a specific task. Each feedback includes reply_status ('pending' or 'replied') and any replies.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -1451,7 +1484,7 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  *         example: 0
  *     responses:
  *       200:
- *         description: List of feedback
+ *         description: List of feedback with reply status and replies
  *         content:
  *           application/json:
  *             schema:
@@ -1461,6 +1494,33 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/TaskComment'
+ *             example:
+ *               feedback:
+ *                 - id: 1
+ *                   task_id: 5
+ *                   user_id: 3
+ *                   user_name: "John Doe"
+ *                   profile_image: "https://example.com/profile.jpg"
+ *                   role: "consultant"
+ *                   content: "Need clarification on requirements"
+ *                   reply_status: "replied"
+ *                   replies:
+ *                     - id: 1
+ *                       feedback_id: 1
+ *                       user_id: 2
+ *                       user_name: "Jane Vendor"
+ *                       content: "I'll provide clarification shortly"
+ *                       created_at: "2025-09-30T10:30:00Z"
+ *                   created_at: "2025-09-30T10:00:00Z"
+ *                   updated_at: "2025-09-30T10:30:00Z"
+ *                 - id: 2
+ *                   task_id: 5
+ *                   user_id: 4
+ *                   user_name: "Mike Smith"
+ *                   content: "Great progress on this task"
+ *                   reply_status: "pending"
+ *                   replies: []
+ *                   created_at: "2025-09-30T11:00:00Z"
  *       401:
  *         description: Not authenticated
  *       404:
@@ -1470,12 +1530,13 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  */
 router.get('/:id/feedback', authenticateToken, TaskController.getFeedback);
 
+
 /**
  * @swagger
  * /api/tasks/{id}/feedback:
  *   post:
  *     summary: Add feedback to a task
- *     description: Add feedback/comment to a specific task
+ *     description: Add feedback/comment to a specific task. The reply_status will automatically be set to 'pending'.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -1492,10 +1553,10 @@ router.get('/:id/feedback', authenticateToken, TaskController.getFeedback);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/AddCommentRequest'
+ *             $ref: '#/components/schemas/AddFeedbackRequest'
  *     responses:
  *       201:
- *         description: Feedback added successfully
+ *         description: Feedback added successfully with status 'pending'
  *         content:
  *           application/json:
  *             schema:
@@ -1505,7 +1566,24 @@ router.get('/:id/feedback', authenticateToken, TaskController.getFeedback);
  *                   type: string
  *                   example: "Feedback added successfully"
  *                 feedback:
- *                   $ref: '#/components/schemas/TaskComment'
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/TaskComment'
+ *                     - type: object
+ *                       properties:
+ *                         reply_status:
+ *                           type: string
+ *                           example: "pending"
+ *             example:
+ *               message: "Feedback added successfully"
+ *               feedback:
+ *                 id: 10
+ *                 task_id: 1
+ *                 user_id: 3
+ *                 user_name: "John Doe"
+ *                 profile_image: "https://example.com/profile.jpg"
+ *                 content: "This task needs more clarification"
+ *                 reply_status: "pending"
+ *                 created_at: "2025-09-30T12:00:00Z"
  *       400:
  *         description: Validation error
  *       401:
@@ -1519,12 +1597,13 @@ router.post('/:id/feedback', [
   authenticateToken,
   check('content').notEmpty().withMessage('Feedback content is required')
 ], TaskController.addFeedback);
+
 /**
  * @swagger
  * /api/tasks/{id}/feedback/{feedback_id}/replies:
  *   post:
  *     summary: Add reply to feedback
- *     description: Add a reply to a specific feedback/comment. Only admins and vendors can reply to feedback.
+ *     description: Add a reply to a specific feedback/comment. Only one reply is allowed per feedback. When reply is added, the feedback's reply_status changes from 'pending' to 'replied' automatically.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -1551,7 +1630,7 @@ router.post('/:id/feedback', [
  *             $ref: '#/components/schemas/AddReplyRequest'
  *     responses:
  *       201:
- *         description: Reply added successfully
+ *         description: Reply added successfully and feedback status updated to 'replied'
  *         content:
  *           application/json:
  *             schema:
@@ -1562,13 +1641,32 @@ router.post('/:id/feedback', [
  *                   example: "Reply added successfully"
  *                 reply:
  *                   $ref: '#/components/schemas/FeedbackReply'
+ *                 feedback_status:
+ *                   type: string
+ *                   example: "replied"
+ *             example:
+ *               message: "Reply added successfully"
+ *               reply:
+ *                 id: 1
+ *                 feedback_id: 5
+ *                 user_id: 2
+ *                 user_name: "John Vendor"
+ *                 profile_image: "https://example.com/profile.jpg"
+ *                 role: "vendor"
+ *                 content: "Thank you for the feedback. I'll address this issue."
+ *                 created_at: "2025-09-30T10:30:00Z"
+ *                 updated_at: "2025-09-30T10:30:00Z"
+ *               feedback_status: "replied"
  *       400:
- *         description: Validation error
+ *         description: Validation error or feedback already has a reply
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "This feedback has already been replied to"
  *                 errors:
  *                   type: array
  *                   items:
@@ -1595,7 +1693,7 @@ router.post('/:id/feedback/:feedback_id/replies', [
  * /api/tasks/{id}/feedback/{feedback_id}/replies:
  *   get:
  *     summary: Get replies for a feedback
- *     description: Retrieve all replies for a specific feedback/comment
+ *     description: Retrieve all replies for a specific feedback/comment.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -1637,15 +1735,6 @@ router.post('/:id/feedback/:feedback_id/replies', [
  *                   content: "Thank you for the feedback. I'll address this."
  *                   created_at: "2025-09-30T10:30:00Z"
  *                   updated_at: "2025-09-30T10:30:00Z"
- *                 - id: 2
- *                   feedback_id: 5
- *                   user_id: 3
- *                   user_name: "Admin User"
- *                   profile_image: "https://example.com/admin.jpg"
- *                   role: "admin"
- *                   content: "Please prioritize this issue."
- *                   created_at: "2025-09-30T11:00:00Z"
- *                   updated_at: "2025-09-30T11:00:00Z"
  *       401:
  *         description: Not authenticated
  *       404:
@@ -1654,7 +1743,6 @@ router.post('/:id/feedback/:feedback_id/replies', [
  *         description: Server error
  */
 router.get('/:id/feedback/:feedback_id/replies', authenticateToken, TaskController.getFeedbackReplies);
-
 /**
  * @swagger
  * /api/tasks/{id}/daily-updates:
