@@ -2,6 +2,7 @@ import db from '../config/db.js';
 import { logUserAction } from '../utils/audit.utils.js';
 import {generateProjectStatusReport,generateTaskReport,generateUserLogsReport,generateUserPerformanceReport,generateVendorPerformanceReport,exportReportToFile } from '../utils/report.utils.js';
 import  {getVendorConsultantIds,getVendorIdByUserId, isConsultantFromVendor }  from '../utils/vendor.utils.js';
+import ProjectModel from '../models/project.model.js';
 
 /**
  * Helper function to create pagination metadata
@@ -451,172 +452,151 @@ export const getProjectStatusReport = async (req, res, next) => {
     next(error);
   }
 };
-
 /**
- * Get vendor performance report with filtering and pagination
- * Shows projects with their tasks, dates and status
+ * Get vendor performance report with filtering
+ * Shows projects assigned to user with their tasks
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
  */
 export const getVendorPerformanceReport = async (req, res, next) => {
   try {
-    const vendorUserId = req.user.id;
-    const { consultant_id, task_status } = req.query;
+    const userId = req.user.id;
+    const { project_id, task_status } = req.query;
 
-    // Verify vendor exists
-    const vendor = await db.query(
-      'SELECT id FROM users WHERE id = $1 AND role = $2',
-      [vendorUserId, 'vendor']
-    );
+    // Get user's projects using the working model
+    const userProjects = await ProjectModel.getMyProjects(userId);
 
-    if (vendor.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Vendor profile not found for the logged-in user'
+    if (!userProjects || userProjects.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          projects: [],
+          filters: {
+            selected_project: project_id || null,
+            selected_status: task_status || 'all'
+          }
+        },
+        message: 'No projects found'
       });
     }
 
-    // Get all consultants for dropdown
-    const allConsultants = await db.query(
-      `SELECT u.id, u.first_name || ' ' || u.last_name AS name
-       FROM users u
-       WHERE u.role = 'employee' AND u.working_for = $1
-       ORDER BY u.first_name, u.last_name`,
-      [vendorUserId]
-    );
-
-    // Base query for consultant performance
-    let consultantQuery = `
-      SELECT 
-        u.id,
-        u.first_name || ' ' || u.last_name AS consultant_name,
-        COUNT(DISTINCT p.id) as total_projects,
-        COUNT(t.id) as total_tasks,
-        COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks,
-        COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks,
-        COUNT(CASE WHEN t.status = 'todo' THEN 1 END) as pending_tasks
-      FROM users u
-      LEFT JOIN task_assignments ta ON u.id = ta.user_id
-      LEFT JOIN tasks t ON ta.task_id = t.id
-      LEFT JOIN projects p ON t.project_id = p.id
-      WHERE u.role = 'employee' AND u.working_for = $1
-    `;
-
-    const queryParams = [vendorUserId];
-    let paramCount = 1;
-
-    // Add consultant filter if specified
-    if (consultant_id) {
-      paramCount++;
-      consultantQuery += ` AND u.id = $${paramCount}`;
-      queryParams.push(consultant_id);
-    }
-
-    consultantQuery += ` GROUP BY u.id, u.first_name, u.last_name ORDER BY u.first_name, u.last_name`;
-
-    const consultantStats = await db.query(consultantQuery, queryParams);
-
-    // Get projects with their tasks
-    let projectQuery = `
-      SELECT DISTINCT
-        p.id as project_id,
-        p.title as project_name,
-        p.status as project_status,
-        p.start_date,
-        p.end_date,
-        u.id as consultant_id,
-        u.first_name || ' ' || u.last_name AS consultant_name
-      FROM projects p
-      JOIN tasks t ON p.id = t.project_id
-      JOIN task_assignments ta ON t.id = ta.task_id
-      JOIN users u ON ta.user_id = u.id
-      WHERE u.role = 'employee' AND u.working_for = $1
-    `;
-
-    const projectQueryParams = [vendorUserId];
-    let projectParamCount = 1;
-
-    if (consultant_id) {
-      projectParamCount++;
-      projectQuery += ` AND u.id = $${projectParamCount}`;
-      projectQueryParams.push(consultant_id);
-    }
-
-    projectQuery += ` ORDER BY p.start_date DESC`;
-
-    const projectsResult = await db.query(projectQuery, projectQueryParams);
-
-    // For each project, get its tasks
+    // Get tasks for each project using the working model
     const projectsWithTasks = await Promise.all(
-      projectsResult.rows.map(async (project) => {
-        let taskQuery = `
-          SELECT 
-            t.id as task_id,
-            t.title as task_title,
-            t.status,
-            t.due_date,
-            t.created_at,
-            ta.assigned_at as assigned_date,
-            u.id as consultant_id,
-            u.first_name || ' ' || u.last_name AS consultant_name
-          FROM tasks t
-          JOIN task_assignments ta ON t.id = ta.task_id
-          JOIN users u ON ta.user_id = u.id
-          WHERE t.project_id = $1 
-            AND u.role = 'employee' 
-            AND u.working_for = $2
-        `;
-
-        const taskQueryParams = [project.project_id, vendorUserId];
-        let taskParamCount = 2;
-
-        // Add consultant filter
-        if (consultant_id) {
-          taskParamCount++;
-          taskQuery += ` AND u.id = $${taskParamCount}`;
-          taskQueryParams.push(consultant_id);
+      userProjects.map(async (project) => {
+        // Apply project filter
+        if (project_id && project_id !== '0' && project_id !== 'all') {
+          if (parseInt(project_id) !== project.id) {
+            return null;
+          }
         }
 
-        // Add task status filter
-        if (task_status && task_status !== 'all') {
-          taskParamCount++;
-          taskQuery += ` AND t.status = $${taskParamCount}`;
-          taskQueryParams.push(task_status);
+        // Get all tasks for this project
+        const allTasks = await ProjectModel.getProjectTasks(project.id);
+
+        // Apply task status filter
+        let filteredTasks = allTasks;
+        if (task_status && task_status !== 'all' && task_status !== '0') {
+          filteredTasks = allTasks.filter(task => task.status === task_status);
         }
 
-        taskQuery += ` ORDER BY t.due_date DESC`;
+        // Get assignee details for each task
+        const tasksWithDetails = await Promise.all(
+          filteredTasks.map(async (task) => {
+            // Get task assignments
+            const assignmentQuery = `
+              SELECT 
+                ta.assigned_at,
+                u.id as assignee_id,
+                u.first_name || ' ' || u.last_name as assignee_name
+              FROM task_assignments ta
+              LEFT JOIN users u ON ta.user_id = u.id
+              WHERE ta.task_id = $1
+              LIMIT 1
+            `;
+            const assignmentResult = await db.query(assignmentQuery, [task.id]);
+            const assignment = assignmentResult.rows[0] || {};
 
-        const tasksResult = await db.query(taskQuery, taskQueryParams);
+            return {
+              task_id: task.id,
+              task_title: task.title,
+              status: task.status || 'new',
+              due_date: task.due_date,
+              created_at: task.created_at,
+              assigned_date: assignment.assigned_at || task.created_at,
+              assignee_id: assignment.assignee_id || null,
+              assignee_name: assignment.assignee_name || 'Unassigned'
+            };
+          })
+        );
+
+        // Skip projects with no tasks if filters are applied
+        if ((project_id || task_status !== 'all') && tasksWithDetails.length === 0) {
+          return null;
+        }
 
         return {
-          project_id: project.project_id,
-          project_name: project.project_name,
-          project_status: project.project_status,
+          project_id: project.id,
+          project_name: project.title,
           start_date: project.start_date,
           end_date: project.end_date,
-          tasks: tasksResult.rows
+          task_count: tasksWithDetails.length,
+          tasks: tasksWithDetails
         };
       })
+    );
+
+    // Remove null entries (filtered out projects)
+    const validProjects = projectsWithTasks.filter(p => p !== null);
+
+    // Calculate overall statistics
+    let totalTasks = 0;
+    let completedTasks = 0;
+    let inProgressTasks = 0;
+    let pendingTasks = 0;
+
+    validProjects.forEach(project => {
+      project.tasks.forEach(task => {
+        totalTasks++;
+        if (task.status === 'completed') {
+          completedTasks++;
+        } else if (task.status === 'in_progress') {
+          inProgressTasks++;
+        } else if (task.status === 'todo' || task.status === 'new') {
+          pendingTasks++;
+        }
+      });
+    });
+
+    // Log this report access
+    await logUserAction(
+      req.user.id,
+      'Generated vendor performance report',
+      `Generated vendor performance report with filters: project_id=${project_id || 'all'}, task_status=${task_status || 'all'}`
     );
 
     res.status(200).json({
       success: true,
       data: {
-        consultants: allConsultants.rows,
-        consultant_stats: consultantStats.rows,
-        projects: projectsWithTasks,
+        summary: {
+          total_projects: validProjects.length,
+          total_tasks: totalTasks,
+          completed_tasks: completedTasks,
+          in_progress_tasks: inProgressTasks,
+          pending_tasks: pendingTasks
+        },
+        projects: validProjects,
         filters: {
-          selected_consultant: consultant_id || null,
+          selected_project: project_id || null,
           selected_status: task_status || 'all'
         }
       }
     });
   } catch (error) {
+    console.error('Error in getVendorPerformanceReport:', error);
     next(error);
   }
-}
-
+};
 /**
  * Export report to CSV/Excel
  * @param {Object} req - Express request object
