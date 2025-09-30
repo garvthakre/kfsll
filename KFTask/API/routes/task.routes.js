@@ -14,6 +14,54 @@ const router = express.Router();
  * @swagger
  * components:
  *   schemas:
+ *     FeedbackReply:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Reply ID
+ *           example: 1
+ *         feedback_id:
+ *           type: integer
+ *           description: Feedback/comment ID this reply belongs to
+ *           example: 5
+ *         user_id:
+ *           type: integer
+ *           description: User ID who made the reply
+ *           example: 2
+ *         user_name:
+ *           type: string
+ *           description: Name of user who replied
+ *           example: "John Vendor"
+ *         profile_image:
+ *           type: string
+ *           description: User profile image URL
+ *           example: "https://example.com/profile.jpg"
+ *         role:
+ *           type: string
+ *           description: Role of user who replied
+ *           example: "vendor"
+ *         content:
+ *           type: string
+ *           description: Reply content
+ *           example: "Thank you for the feedback. I'll address this issue."
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *           description: Reply creation timestamp
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *           description: Reply last update timestamp
+ *     AddReplyRequest:
+ *       type: object
+ *       required:
+ *         - content
+ *       properties:
+ *         content:
+ *           type: string
+ *           description: Reply content
+ *           example: "Thank you for your feedback. I'll work on improving this."
  *     VerifyTaskRequest:
  *       type: object
  *       required:
@@ -1471,6 +1519,141 @@ router.post('/:id/feedback', [
   authenticateToken,
   check('content').notEmpty().withMessage('Feedback content is required')
 ], TaskController.addFeedback);
+/**
+ * @swagger
+ * /api/tasks/{id}/feedback/{feedback_id}/replies:
+ *   post:
+ *     summary: Add reply to feedback
+ *     description: Add a reply to a specific feedback/comment. Only admins and vendors can reply to feedback.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Task ID
+ *         example: 1
+ *       - in: path
+ *         name: feedback_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Feedback/comment ID to reply to
+ *         example: 5
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/AddReplyRequest'
+ *     responses:
+ *       201:
+ *         description: Reply added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Reply added successfully"
+ *                 reply:
+ *                   $ref: '#/components/schemas/FeedbackReply'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       msg:
+ *                         type: string
+ *                       param:
+ *                         type: string
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Feedback not found
+ *       500:
+ *         description: Server error
+ */
+router.post('/:id/feedback/:feedback_id/replies', [
+  authenticateToken,
+  check('content').notEmpty().withMessage('Reply content is required')
+], TaskController.addFeedbackReply);
+
+/**
+ * @swagger
+ * /api/tasks/{id}/feedback/{feedback_id}/replies:
+ *   get:
+ *     summary: Get replies for a feedback
+ *     description: Retrieve all replies for a specific feedback/comment
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Task ID
+ *         example: 1
+ *       - in: path
+ *         name: feedback_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Feedback/comment ID
+ *         example: 5
+ *     responses:
+ *       200:
+ *         description: List of replies for the feedback
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 replies:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/FeedbackReply'
+ *             example:
+ *               replies:
+ *                 - id: 1
+ *                   feedback_id: 5
+ *                   user_id: 2
+ *                   user_name: "John Vendor"
+ *                   profile_image: "https://example.com/profile.jpg"
+ *                   role: "vendor"
+ *                   content: "Thank you for the feedback. I'll address this."
+ *                   created_at: "2025-09-30T10:30:00Z"
+ *                   updated_at: "2025-09-30T10:30:00Z"
+ *                 - id: 2
+ *                   feedback_id: 5
+ *                   user_id: 3
+ *                   user_name: "Admin User"
+ *                   profile_image: "https://example.com/admin.jpg"
+ *                   role: "admin"
+ *                   content: "Please prioritize this issue."
+ *                   created_at: "2025-09-30T11:00:00Z"
+ *                   updated_at: "2025-09-30T11:00:00Z"
+ *       401:
+ *         description: Not authenticated
+ *       404:
+ *         description: Feedback not found
+ *       500:
+ *         description: Server error
+ */
+router.get('/:id/feedback/:feedback_id/replies', authenticateToken, TaskController.getFeedbackReplies);
 
 /**
  * @swagger

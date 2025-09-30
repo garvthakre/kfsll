@@ -883,7 +883,102 @@ async getFeedback(req, res) {
       return res.status(500).json({ message: 'Server error while adding comment' });
     }
   },
+/**
+ * Add reply to feedback
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - New reply details
+ */
+async addFeedbackReply(req, res) {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
+    const feedbackId = parseInt(req.params.feedback_id);
+    const { content } = req.body;
+
+    // Check if user is admin or vendor
+    // if (req.user.role !== 'admin' && req.user.role !== 'vendor') {
+    //   return res.status(403).json({ 
+    //     message: 'Only admins and vendors can reply to feedback' 
+    //   });
+    // }
+
+    // Check if feedback exists and get task_id
+    const feedbackQuery = await db.query(
+      'SELECT task_id FROM task_comments WHERE id = $1',
+      [feedbackId]
+    );
+    
+    if (feedbackQuery.rows.length === 0) {
+      return res.status(404).json({ message: 'Feedback not found' });
+    }
+
+    const taskId = feedbackQuery.rows[0].task_id;
+
+    // Add reply
+    const reply = await TaskModel.addFeedbackReply({
+      feedback_id: feedbackId,
+      user_id: req.user.id,
+      content
+    });
+
+    // Get user details for response
+    const { rows } = await db.query(
+      'SELECT first_name || \' \' || last_name as user_name, profile_image, role FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    reply.user_name = rows[0].user_name;
+    reply.profile_image = rows[0].profile_image;
+    reply.role = rows[0].role;
+
+    // Log reply activity
+    await db.query(
+      'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
+      [taskId, req.user.id, 'feedback_reply', 'Added reply to feedback']
+    );
+
+    return res.status(201).json({
+      message: 'Reply added successfully',
+      reply
+    });
+  } catch (error) {
+    console.error('Add feedback reply error:', error);
+    return res.status(500).json({ message: 'Server error while adding reply' });
+  }
+},
+
+/**
+ * Get replies for a feedback
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of replies
+ */
+async getFeedbackReplies(req, res) {
+  try {
+    const feedbackId = parseInt(req.params.feedback_id);
+    
+    // Check if feedback exists
+    const feedbackQuery = await db.query(
+      'SELECT id FROM task_comments WHERE id = $1',
+      [feedbackId]
+    );
+    
+    if (feedbackQuery.rows.length === 0) {
+      return res.status(404).json({ message: 'Feedback not found' });
+    }
+
+    const replies = await TaskModel.getFeedbackReplies(feedbackId);
+
+    return res.status(200).json({ replies });
+  } catch (error) {
+    console.error('Get feedback replies error:', error);
+    return res.status(500).json({ message: 'Server error while fetching replies' });
+  }
+},
   /**
    * Get comments for task
    * @param {Object} req - Express request object

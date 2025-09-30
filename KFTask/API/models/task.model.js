@@ -497,6 +497,42 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
 },
 
 /**
+ * Add reply to feedback
+ */
+async addFeedbackReply(replyData) {
+  const { feedback_id, user_id, content } = replyData;
+
+  const query = `
+    INSERT INTO task_feedback_replies (feedback_id, user_id, content)
+    VALUES ($1, $2, $3)
+    RETURNING *
+  `;
+
+  const values = [feedback_id, user_id, content];
+  const { rows } = await db.query(query, values);
+  return rows[0];
+},
+
+/**
+ * Get replies for a feedback
+ */
+async getFeedbackReplies(feedbackId) {
+  const query = `
+    SELECT 
+      tfr.*,
+      u.first_name || ' ' || u.last_name as user_name,
+      u.profile_image,
+      u.role
+    FROM task_feedback_replies tfr
+    JOIN users u ON tfr.user_id = u.id
+    WHERE tfr.feedback_id = $1
+    ORDER BY tfr.created_at ASC
+  `;
+
+  const { rows } = await db.query(query, [feedbackId]);
+  return rows;
+},
+/**
  * Count total tasks that have daily updates with filters
  */
 async countTotalWithDailyUpdates(filters = {}) {
@@ -575,25 +611,32 @@ async countTotalWithDailyUpdates(filters = {}) {
   },
  
 
-  /**
-   * Get comments for a task
-   */
-  async getComments(taskId, limit = 50, offset = 0) {
-    const query = `
-      SELECT 
-        tc.*,
-        u.first_name || ' ' || u.last_name as user_name,
-        u.profile_image
-      FROM task_comments tc
-      JOIN users u ON tc.user_id = u.id
-      WHERE tc.task_id = $1
-      ORDER BY tc.created_at DESC
-      LIMIT $2 OFFSET $3
-    `;
+ /**
+ * Get comments for a task (with replies)
+ */
+async getComments(taskId, limit = 50, offset = 0) {
+  const query = `
+    SELECT 
+      tc.*,
+      u.first_name || ' ' || u.last_name as user_name,
+      u.profile_image,
+      u.role
+    FROM task_comments tc
+    JOIN users u ON tc.user_id = u.id
+    WHERE tc.task_id = $1
+    ORDER BY tc.created_at DESC
+    LIMIT $2 OFFSET $3
+  `;
 
-    const { rows } = await db.query(query, [taskId, limit, offset]);
-    return rows;
-  },
+  const { rows } = await db.query(query, [taskId, limit, offset]);
+  
+  // Get replies for each feedback
+  for (let feedback of rows) {
+    feedback.replies = await this.getFeedbackReplies(feedback.id);
+  }
+  
+  return rows;
+},
 
   /**
    * Get task statistics by status
