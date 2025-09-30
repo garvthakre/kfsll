@@ -1456,7 +1456,7 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  * /api/tasks/{id}/feedback:
  *   get:
  *     summary: Get feedback for a task
- *     description: Retrieve all feedback/comments for a specific task. Each feedback includes reply_status ('pending' or 'replied') and any replies.
+ *     description: Retrieve all feedback/comments for a specific task with pagination and filters. Each feedback includes reply_status ('pending' or 'replied') and any replies.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -1469,6 +1469,13 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  *         description: Task ID
  *         example: 1
  *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *         example: 1
+ *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
@@ -1476,12 +1483,24 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  *         description: Results per page
  *         example: 20
  *       - in: query
- *         name: offset
+ *         name: user_id
  *         schema:
  *           type: integer
- *           default: 0
- *         description: Pagination offset
- *         example: 0
+ *         description: Filter by user who created feedback
+ *         example: 3
+ *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by project ID
+ *         example: 1
+ *       - in: query
+ *         name: reply_status
+ *         schema:
+ *           type: string
+ *           enum: [pending, replied]
+ *         description: Filter by reply status
+ *         example: "pending"
  *     responses:
  *       200:
  *         description: List of feedback with reply status and replies
@@ -1494,33 +1513,21 @@ router.delete('/:id', authenticateToken, TaskController.deleteTask);
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/TaskComment'
- *             example:
- *               feedback:
- *                 - id: 1
- *                   task_id: 5
- *                   user_id: 3
- *                   user_name: "John Doe"
- *                   profile_image: "https://example.com/profile.jpg"
- *                   role: "consultant"
- *                   content: "Need clarification on requirements"
- *                   reply_status: "replied"
- *                   replies:
- *                     - id: 1
- *                       feedback_id: 1
- *                       user_id: 2
- *                       user_name: "Jane Vendor"
- *                       content: "I'll provide clarification shortly"
- *                       created_at: "2025-09-30T10:30:00Z"
- *                   created_at: "2025-09-30T10:00:00Z"
- *                   updated_at: "2025-09-30T10:30:00Z"
- *                 - id: 2
- *                   task_id: 5
- *                   user_id: 4
- *                   user_name: "Mike Smith"
- *                   content: "Great progress on this task"
- *                   reply_status: "pending"
- *                   replies: []
- *                   created_at: "2025-09-30T11:00:00Z"
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 50
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 20
+ *                     pages:
+ *                       type: integer
+ *                       example: 3
  *       401:
  *         description: Not authenticated
  *       404:
@@ -1693,7 +1700,7 @@ router.post('/:id/feedback/:feedback_id/replies', [
  * /api/tasks/{id}/feedback/{feedback_id}/replies:
  *   get:
  *     summary: Get replies for a feedback
- *     description: Retrieve all replies for a specific feedback/comment.
+ *     description: Retrieve all replies for a specific feedback/comment with pagination and filters.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -1712,9 +1719,29 @@ router.post('/:id/feedback/:feedback_id/replies', [
  *           type: integer
  *         description: Feedback/comment ID
  *         example: 5
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *         description: Results per page
+ *         example: 10
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by user who created reply
+ *         example: 2
  *     responses:
  *       200:
- *         description: List of replies for the feedback
+ *         description: List of replies for the feedback with pagination
  *         content:
  *           application/json:
  *             schema:
@@ -1724,17 +1751,21 @@ router.post('/:id/feedback/:feedback_id/replies', [
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/FeedbackReply'
- *             example:
- *               replies:
- *                 - id: 1
- *                   feedback_id: 5
- *                   user_id: 2
- *                   user_name: "John Vendor"
- *                   profile_image: "https://example.com/profile.jpg"
- *                   role: "vendor"
- *                   content: "Thank you for the feedback. I'll address this."
- *                   created_at: "2025-09-30T10:30:00Z"
- *                   updated_at: "2025-09-30T10:30:00Z"
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 15
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     pages:
+ *                       type: integer
+ *                       example: 2
  *       401:
  *         description: Not authenticated
  *       404:

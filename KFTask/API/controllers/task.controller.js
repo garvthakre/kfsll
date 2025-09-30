@@ -804,31 +804,7 @@ async addFeedback(req, res) {
   }
 },
  
-/**
- * Get feedback for task
- * Shows reply_status for each feedback
- */
-async getFeedback(req, res) {
-  try {
-    const taskId = parseInt(req.params.id);
-    
-    // Check if task exists
-    const task = await TaskModel.findById(taskId);
-    if (!task) {
-      return res.status(404).json({ message: 'Task not found' });
-    }
-
-    const limit = parseInt(req.query.limit) || 50;
-    const offset = parseInt(req.query.offset) || 0;
-
-    const feedback = await TaskModel.getComments(taskId, limit, offset);
-
-    return res.status(200).json({ feedback });
-  } catch (error) {
-    console.error('Get feedback error:', error);
-    return res.status(500).json({ message: 'Server error while fetching feedback' });
-  }
-},
+ 
 
   /**
    * Add comment to task
@@ -958,10 +934,56 @@ async addFeedbackReply(req, res) {
   }
 },
 /**
- * Get replies for a feedback
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- * @returns {Object} - List of replies
+ * Get feedback for task with pagination and filters
+ */
+async getFeedback(req, res) {
+  try {
+    const taskId = parseInt(req.params.id);
+    
+    // Check if task exists
+    const task = await TaskModel.findById(taskId);
+    if (!task) {
+      return res.status(404).json({ message: 'Task not found' });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+
+    // Build filters object
+    const filters = {
+      user_id: req.query.user_id ? parseInt(req.query.user_id) : null,
+      project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
+      reply_status: req.query.reply_status
+    };
+
+    // Remove undefined filters
+    Object.keys(filters).forEach(key => {
+      if (filters[key] === undefined || filters[key] === null) {
+        delete filters[key];
+      }
+    });
+
+    const feedback = await TaskModel.getComments(taskId, limit, offset, filters);
+    const total = await TaskModel.countComments(taskId, filters);
+
+    return res.status(200).json({ 
+      feedback,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get feedback error:', error);
+    return res.status(500).json({ message: 'Server error while fetching feedback' });
+  }
+},
+
+/**
+ * Get replies for a feedback with pagination and filters
  */
 async getFeedbackReplies(req, res) {
   try {
@@ -977,9 +999,34 @@ async getFeedbackReplies(req, res) {
       return res.status(404).json({ message: 'Feedback not found' });
     }
 
-    const replies = await TaskModel.getFeedbackReplies(feedbackId);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
 
-    return res.status(200).json({ replies });
+    // Build filters object
+    const filters = {
+      user_id: req.query.user_id ? parseInt(req.query.user_id) : null
+    };
+
+    // Remove undefined filters
+    Object.keys(filters).forEach(key => {
+      if (filters[key] === undefined || filters[key] === null) {
+        delete filters[key];
+      }
+    });
+
+    const replies = await TaskModel.getFeedbackReplies(feedbackId, limit, offset, filters);
+    const total = await TaskModel.countFeedbackReplies(feedbackId, filters);
+
+    return res.status(200).json({ 
+      replies,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     console.error('Get feedback replies error:', error);
     return res.status(500).json({ message: 'Server error while fetching replies' });

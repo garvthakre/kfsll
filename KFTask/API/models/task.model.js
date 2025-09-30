@@ -514,23 +514,39 @@ async addFeedbackReply(replyData) {
 },
 
 /**
- * Get replies for a feedback
+ * Get replies for a feedback with pagination and filters
  */
-async getFeedbackReplies(feedbackId) {
-  const query = `
+async getFeedbackReplies(feedbackId, limit = null, offset = 0, filters = {}) {
+  let query = `
     SELECT 
       tfr.*,
-      tfr.reply_status,
       u.first_name || ' ' || u.last_name as user_name,
       u.profile_image,
       u.role
     FROM task_feedback_replies tfr
     JOIN users u ON tfr.user_id = u.id
     WHERE tfr.feedback_id = $1
-    ORDER BY tfr.created_at ASC
   `;
 
-  const { rows } = await db.query(query, [feedbackId]);
+  const queryParams = [feedbackId];
+  let paramIndex = 2;
+
+  // Add filters
+  if (filters.user_id) {
+    query += ` AND tfr.user_id = $${paramIndex}`;
+    queryParams.push(filters.user_id);
+    paramIndex++;
+  }
+
+  query += ' ORDER BY tfr.created_at ASC';
+
+  // Add pagination if limit is provided
+  if (limit !== null) {
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryParams.push(limit, offset);
+  }
+
+  const { rows } = await db.query(query, queryParams);
   return rows;
 },
 /**
@@ -610,12 +626,11 @@ async addComment(commentData) {
   const { rows } = await db.query(query, values);
   return rows[0];
 },
-
- /**
- * Get comments for a task (with replies)
+/**
+ * Get comments for a task with pagination and filters (with replies)
  */
-async getComments(taskId, limit = 50, offset = 0) {
-  const query = `
+async getComments(taskId, limit = 50, offset = 0, filters = {}) {
+  let query = `
     SELECT 
       tc.*,
       u.first_name || ' ' || u.last_name as user_name,
@@ -624,11 +639,37 @@ async getComments(taskId, limit = 50, offset = 0) {
     FROM task_comments tc
     JOIN users u ON tc.user_id = u.id
     WHERE tc.task_id = $1
-    ORDER BY tc.created_at DESC
-    LIMIT $2 OFFSET $3
   `;
+  
+  const queryParams = [taskId];
+  let paramIndex = 2;
 
-  const { rows } = await db.query(query, [taskId, limit, offset]);
+  // Add filters
+  if (filters.user_id) {
+    query += ` AND tc.user_id = $${paramIndex}`;
+    queryParams.push(filters.user_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND EXISTS (
+      SELECT 1 FROM tasks t 
+      WHERE t.id = tc.task_id AND t.project_id = $${paramIndex}
+    )`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.reply_status) {
+    query += ` AND tc.reply_status = $${paramIndex}`;
+    queryParams.push(filters.reply_status);
+    paramIndex++;
+  }
+
+  query += ` ORDER BY tc.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  queryParams.push(limit, offset);
+
+  const { rows } = await db.query(query, queryParams);
   
   // Get replies for each feedback
   for (let feedback of rows) {
@@ -637,7 +678,6 @@ async getComments(taskId, limit = 50, offset = 0) {
   
   return rows;
 },
-
   /**
    * Get task statistics by status
    */
