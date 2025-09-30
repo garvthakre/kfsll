@@ -42,9 +42,9 @@ async create(taskData) {
 },
 
 /**
- * Find all tasks where user is assignee or creator (no filters, no pagination)
+ * Find all tasks where user is assignee or creator (WITH pagination)
  */
-async findAllByUser(userId) {
+async findAllByUser(userId, limit = 10, offset = 0) {
   console.log('findAllByUser called with userId:', userId, 'type:', typeof userId);
   
   const tasksQuery = `
@@ -64,15 +64,92 @@ async findAllByUser(userId) {
       CASE WHEN t.due_date IS NULL THEN 1 ELSE 0 END,
       t.due_date ASC,
       t.created_at DESC
+    LIMIT $2 OFFSET $3
   `;
 
-  const tasksResult = await db.query(tasksQuery, [userId]);
+  const tasksResult = await db.query(tasksQuery, [userId, limit, offset]);
 
   console.log('Query results for userId', userId, ':', tasksResult.rows.length, 'tasks found');
   
   return tasksResult.rows;
 },
 
+/**
+ * Count total tasks for user  
+ */
+async countUserTasks(userId) {
+  const query = `
+    SELECT COUNT(*) as total
+    FROM tasks t
+    WHERE (t.created_by = $1 OR t.assignee_id = $1)
+    AND t.status != 'completed'
+  `;
+
+  const { rows } = await db.query(query, [userId]);
+  return parseInt(rows[0].total);
+},
+/**
+ * Count total comments for a task with filters
+ */
+async countComments(taskId, filters = {}) {
+  let query = `
+    SELECT COUNT(*) as total
+    FROM task_comments tc
+    WHERE tc.task_id = $1
+  `;
+  
+  const queryParams = [taskId];
+  let paramIndex = 2;
+
+  // Add filters
+  if (filters.user_id) {
+    query += ` AND tc.user_id = $${paramIndex}`;
+    queryParams.push(filters.user_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND EXISTS (
+      SELECT 1 FROM tasks t 
+      WHERE t.id = tc.task_id AND t.project_id = $${paramIndex}
+    )`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.reply_status) {
+    query += ` AND tc.reply_status = $${paramIndex}`;
+    queryParams.push(filters.reply_status);
+    paramIndex++;
+  }
+
+  const { rows } = await db.query(query, queryParams);
+  return parseInt(rows[0].total);
+},
+
+/**
+ * Count total replies for a feedback with filters
+ */
+async countFeedbackReplies(feedbackId, filters = {}) {
+  let query = `
+    SELECT COUNT(*) as total
+    FROM task_feedback_replies tfr
+    WHERE tfr.feedback_id = $1
+  `;
+  
+  const queryParams = [feedbackId];
+  let paramIndex = 2;
+
+  // Add filters
+  if (filters.user_id) {
+    query += ` AND tfr.user_id = $${paramIndex}`;
+    queryParams.push(filters.user_id);
+    paramIndex++;
+  }
+
+  const { rows } = await db.query(query, queryParams);
+  return parseInt(rows[0].total);
+},
   /**
    * Find all tasks where user is assignee or creator (no filters)
    */

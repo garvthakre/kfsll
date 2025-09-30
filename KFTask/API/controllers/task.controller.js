@@ -99,19 +99,32 @@ async getMyTasksWITHIDANDTITLES(req, res) {
 async getMyTasks(req, res) {
   try {
     const userId = req.user.id;
+    
+    // Add pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
 
-    const tasks = await TaskModel.findAllByUser(userId);
+    // Get paginated tasks
+    const tasks = await TaskModel.findAllByUser(userId, limit, offset);
+    
+    // Get total count
+    const total = await TaskModel.countUserTasks(userId);
 
     return res.status(200).json({
-      tasks
+      tasks,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
     });
   } catch (error) {
     console.error('Get my tasks error:', error);
     return res.status(500).json({ message: 'Server error while fetching my tasks' });
   }
 }
-
-
 ,
 /**
  * Get all tasks (id and title only)

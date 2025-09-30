@@ -597,13 +597,26 @@ router.get('/pending-verification/:project_id', authenticateToken, TaskControlle
  * /api/tasks/my:
  *   get:
  *     summary: Get all tasks assigned to or created by the user
- *     description: Retrieve all tasks where the authenticated user is either the assignee or creator
+ *     description: Retrieve paginated tasks where the authenticated user is either the assignee or creator
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of tasks per page
  *     responses:
  *       200:
- *         description: All tasks for the authenticated user
+ *         description: Paginated tasks for the authenticated user
  *         content:
  *           application/json:
  *             schema:
@@ -613,6 +626,21 @@ router.get('/pending-verification/:project_id', authenticateToken, TaskControlle
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Task'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       description: Total number of tasks
+ *                     page:
+ *                       type: integer
+ *                       description: Current page number
+ *                     limit:
+ *                       type: integer
+ *                       description: Tasks per page
+ *                     pages:
+ *                       type: integer
+ *                       description: Total number of pages
  *       401:
  *         description: Not authenticated
  *       500:
