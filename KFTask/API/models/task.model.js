@@ -756,10 +756,10 @@ async getComments(taskId, limit = 50, offset = 0, filters = {}) {
   return rows;
 },
 /**
- * Get all feedback with pagination and filters
+ * Get all feedback for a specific user with pagination
  */
-async getAllFeedback(limit = 50, offset = 0, filters = {}) {
-  let query = `
+async getAllFeedback(limit = 50, offset = 0, userId) {
+  const query = `
     SELECT 
       tc.*,
       u.first_name || ' ' || u.last_name as user_name,
@@ -773,35 +773,12 @@ async getAllFeedback(limit = 50, offset = 0, filters = {}) {
     JOIN users u ON tc.user_id = u.id
     JOIN tasks t ON tc.task_id = t.id
     LEFT JOIN projects p ON t.project_id = p.id
-    WHERE 1=1
+    WHERE tc.user_id = $1
+    ORDER BY tc.created_at DESC 
+    LIMIT $2 OFFSET $3
   `;
-  
-  const queryParams = [];
-  let paramIndex = 1;
 
-  // Add filters
-  if (filters.user_id) {
-    query += ` AND tc.user_id = $${paramIndex}`;
-    queryParams.push(filters.user_id);
-    paramIndex++;
-  }
-
-  if (filters.project_id) {
-    query += ` AND t.project_id = $${paramIndex}`;
-    queryParams.push(filters.project_id);
-    paramIndex++;
-  }
-
-  if (filters.reply_status) {
-    query += ` AND tc.reply_status = $${paramIndex}`;
-    queryParams.push(filters.reply_status);
-    paramIndex++;
-  }
-
-  query += ` ORDER BY tc.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-  queryParams.push(limit, offset);
-
-  const { rows } = await db.query(query, queryParams);
+  const { rows } = await db.query(query, [userId, limit, offset]);
   
   // Get replies for each feedback
   for (let feedback of rows) {
@@ -812,39 +789,16 @@ async getAllFeedback(limit = 50, offset = 0, filters = {}) {
 },
 
 /**
- * Count total feedback with filters
+ * Count total feedback for a specific user
  */
-async countAllFeedback(filters = {}) {
-  let query = `
+async countAllFeedback(userId) {
+  const query = `
     SELECT COUNT(*) as total
     FROM task_comments tc
-    JOIN tasks t ON tc.task_id = t.id
-    WHERE 1=1
+    WHERE tc.user_id = $1
   `;
-  
-  const queryParams = [];
-  let paramIndex = 1;
 
-  // Add filters
-  if (filters.user_id) {
-    query += ` AND tc.user_id = $${paramIndex}`;
-    queryParams.push(filters.user_id);
-    paramIndex++;
-  }
-
-  if (filters.project_id) {
-    query += ` AND t.project_id = $${paramIndex}`;
-    queryParams.push(filters.project_id);
-    paramIndex++;
-  }
-
-  if (filters.reply_status) {
-    query += ` AND tc.reply_status = $${paramIndex}`;
-    queryParams.push(filters.reply_status);
-    paramIndex++;
-  }
-
-  const { rows } = await db.query(query, queryParams);
+  const { rows } = await db.query(query, [userId]);
   return parseInt(rows[0].total);
 },
   /**

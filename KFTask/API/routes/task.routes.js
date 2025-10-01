@@ -485,16 +485,24 @@ const router = express.Router();
  *         description: Server error
  */
 router.get('/stats', authenticateToken, TaskController.getTaskStats);
+
 /**
  * @swagger
- * /api/tasks/feedback:
+ * /api/tasks/feedback/{user_id}:
  *   get:
- *     summary: Get all feedback
- *     description: Get all feedback from all tasks with pagination and filters
+ *     summary: Get all feedback for a specific user
+ *     description: Get all feedback created by a specific user with pagination
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID to get feedback for
+ *         example: 5
  *       - in: query
  *         name: page
  *         schema:
@@ -509,25 +517,6 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
  *           default: 50
  *         description: Number of items per page
  *         example: 50
- *       - in: query
- *         name: user_id
- *         schema:
- *           type: integer
- *         description: Filter by user who created the feedback
- *         example: 5
- *       - in: query
- *         name: project_id
- *         schema:
- *           type: integer
- *         description: Filter by project
- *         example: 3
- *       - in: query
- *         name: reply_status
- *         schema:
- *           type: string
- *           enum: [pending, replied]
- *         description: Filter by reply status
- *         example: pending
  *     responses:
  *       200:
  *         description: Feedback retrieved successfully
@@ -543,103 +532,55 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
  *                     properties:
  *                       id:
  *                         type: integer
- *                         example: 1
  *                       task_id:
  *                         type: integer
- *                         example: 10
  *                       task_title:
  *                         type: string
- *                         example: "Complete API documentation"
  *                       project_id:
  *                         type: integer
- *                         example: 3
  *                       project_title:
  *                         type: string
- *                         example: "KFTask Project"
  *                       user_id:
  *                         type: integer
- *                         example: 5
  *                       user_name:
  *                         type: string
- *                         example: "John Doe"
  *                       profile_image:
  *                         type: string
- *                         nullable: true
- *                         example: "https://example.com/profile.jpg"
  *                       role:
  *                         type: string
- *                         example: "manager"
  *                       content:
  *                         type: string
- *                         example: "Please review the latest changes"
  *                       reply_status:
  *                         type: string
- *                         enum: [pending, replied]
- *                         example: "pending"
  *                       created_at:
  *                         type: string
  *                         format: date-time
- *                         example: "2025-09-25T10:30:00Z"
  *                       updated_at:
  *                         type: string
  *                         format: date-time
- *                         example: "2025-09-25T10:30:00Z"
  *                       replies:
  *                         type: array
  *                         items:
  *                           type: object
- *                           properties:
- *                             id:
- *                               type: integer
- *                               example: 1
- *                             feedback_id:
- *                               type: integer
- *                               example: 1
- *                             user_id:
- *                               type: integer
- *                               example: 6
- *                             user_name:
- *                               type: string
- *                               example: "Jane Smith"
- *                             profile_image:
- *                               type: string
- *                               nullable: true
- *                               example: "https://example.com/profile2.jpg"
- *                             role:
- *                               type: string
- *                               example: "admin"
- *                             content:
- *                               type: string
- *                               example: "Changes have been reviewed and approved"
- *                             created_at:
- *                               type: string
- *                               format: date-time
- *                               example: "2025-09-25T11:00:00Z"
- *                             updated_at:
- *                               type: string
- *                               format: date-time
- *                               example: "2025-09-25T11:00:00Z"
  *                 pagination:
  *                   type: object
  *                   properties:
  *                     total:
  *                       type: integer
- *                       example: 150
  *                     page:
  *                       type: integer
- *                       example: 1
  *                     limit:
  *                       type: integer
- *                       example: 50
  *                     pages:
  *                       type: integer
- *                       example: 3
+ *       400:
+ *         description: Invalid user ID
  *       401:
  *         description: Not authenticated
  *       500:
  *         description: Server error
  */
-router.get('/feedback', authenticateToken, TaskController.getAllFeedback);
+router.get('/feedback/:user_id', authenticateToken, TaskController.getAllFeedback);
 /**
  * @swagger
  * /api/tasks/my-projectsTask:

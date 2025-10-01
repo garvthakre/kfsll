@@ -947,6 +947,40 @@ async addFeedbackReply(req, res) {
   }
 },
 /**
+ * Get all feedback for a specific user with pagination
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+async getAllFeedback(req, res) {
+  try {
+    const userId = parseInt(req.params.user_id);
+
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ message: 'Valid user ID is required' });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+
+    const feedback = await TaskModel.getAllFeedback( userId,limit, offset);
+    const total = await TaskModel.countAllFeedback(userId);
+
+    return res.status(200).json({ 
+      feedback,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get all feedback error:', error);
+    return res.status(500).json({ message: 'Server error while fetching feedback' });
+  }
+},
+/**
  * Get feedback for task with pagination and filters
  */
 async getFeedback(req, res) {
@@ -995,32 +1029,24 @@ async getFeedback(req, res) {
   }
 },
 /**
- * Get all feedback with pagination and filters
+ * Get all feedback for a specific user with pagination
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
 async getAllFeedback(req, res) {
   try {
+    const userId = parseInt(req.params.user_id);
+
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ message: 'Valid user ID is required' });
+    }
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
 
-    // Build filters object
-    const filters = {
-      user_id: req.query.user_id ? parseInt(req.query.user_id) : null,
-      project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
-      reply_status: req.query.reply_status
-    };
-
-    // Remove undefined filters
-    Object.keys(filters).forEach(key => {
-      if (filters[key] === undefined || filters[key] === null) {
-        delete filters[key];
-      }
-    });
-
-    const feedback = await TaskModel.getAllFeedback(limit, offset, filters);
-    const total = await TaskModel.countAllFeedback(filters);
+    const feedback = await TaskModel.getAllFeedback(limit, offset, userId);
+    const total = await TaskModel.countAllFeedback(userId);
 
     return res.status(200).json({ 
       feedback,
@@ -1036,6 +1062,7 @@ async getAllFeedback(req, res) {
     return res.status(500).json({ message: 'Server error while fetching feedback' });
   }
 },
+
 /**
  * Get replies for a feedback with pagination and filters
  */
