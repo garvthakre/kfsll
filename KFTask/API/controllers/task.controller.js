@@ -532,6 +532,61 @@ async getMyVerifications(req, res) {
     return res.status(500).json({ message: 'Server error while fetching verifications' });
   }
 },
+async getAllVendorsWithDailyUpdates(req, res) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limitParam = req.query.limit;
+    
+    // Handle limit=0 or limit="all" to get all results
+    let limit, offset;
+    if (limitParam === '0' || limitParam === 'all' || parseInt(limitParam) === 0) {
+      limit = null;
+      offset = 0;
+    } else {
+      limit = parseInt(limitParam) || 10;
+      offset = (page - 1) * limit;
+    }
+
+    // Build filters object from query parameters
+    const filters = {
+      vendor_id: req.query.vendor_id ? parseInt(req.query.vendor_id) : null,
+      project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
+      assignee_id: req.query.assignee_id ? parseInt(req.query.assignee_id) : null,
+      update_date_start: req.query.update_date_start,
+      update_date_end: req.query.update_date_end
+    };
+
+    // Remove undefined filters
+    Object.keys(filters).forEach(key => {
+      if (filters[key] === undefined || filters[key] === null) {
+        delete filters[key];
+      }
+    });
+
+    // Get tasks with their daily updates data
+    const vendors = await TaskModel.findAllWithDailyUpdatesData(limit, offset, filters);
+    const total = await TaskModel.countTotalWithDailyUpdates(filters);
+
+    // Prepare response based on whether pagination is used
+    const response = { vendors };
+    
+    if (limit !== null) {
+      response.pagination = {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      };
+    } else {
+      response.total = total;
+    }
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Get all vendors with daily updates error:', error);
+    return res.status(500).json({ message: 'Server error while fetching vendors with daily updates' });
+  }
+},
 /**
  * Get tasks pending verification by project ID
  * @param {Object} req - Express request object

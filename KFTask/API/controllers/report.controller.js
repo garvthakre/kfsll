@@ -184,7 +184,7 @@ export const getTaskReport = async (req, res, next) => {
 
  
 /**
- * Get user performance report with pagination
+ * Get user performance report with pagination and feedback
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
@@ -232,27 +232,37 @@ export const getUserPerformanceReport = async (req, res, next) => {
   
       const whereClause = whereConditions.join(' AND ');
   
-      // Main query for tasks
+      // Main query for tasks with feedback
       const tasksQuery = `
         SELECT 
           t.id,
           t.title as task_title,
-           t.assignee_id as assignee_id,
+          t.assignee_id as assignee_id,
           p.title as project_title,
           p.id as project_id,
           COALESCE(u.first_name || ' ' || u.last_name, 'Unassigned') as assigned_user,
-
           TO_CHAR(t.created_at, 'DD-Mon-YYYY') as created_on,
           TO_CHAR(t.due_date, 'DD-Mon-YYYY') as completion_date,
           CASE 
             WHEN t.status = 'planning' THEN 'planning'
             WHEN t.status = 'in_progress' THEN 'In Progress'
             WHEN t.status = 'completed' THEN 'Completed'
-      
             WHEN t.status = 'on_hold' THEN 'On Hold'
             WHEN t.status = 'cancelled' THEN 'Cancelled'
             ELSE 'Pending'
-          END as status
+          END as status,
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', tc.id,
+                'content', tc.content,
+                'reply_status', tc.reply_status,
+                'created_at', TO_CHAR(tc.created_at, 'DD-Mon-YYYY HH24:MI')
+              ) ORDER BY tc.created_at DESC
+            )
+            FROM task_comments tc
+            WHERE tc.task_id = t.id AND tc.user_id = $1
+          ) as feedback
         FROM tasks t
         LEFT JOIN projects p ON t.project_id = p.id
         LEFT JOIN users u ON t.assignee_id = u.id
@@ -305,8 +315,6 @@ export const getUserPerformanceReport = async (req, res, next) => {
       });
     }
 };
-
-
 /**
  * Get project status report with pagination
  * @param {Object} req - Express request object
@@ -454,8 +462,8 @@ export const getProjectStatusReport = async (req, res, next) => {
 };
 
 /**
- * Get vendor performance report with filtering and pagination
- * Shows projects assigned to user with their tasks
+ * Get vendor performance report 
+ * Shows projects assigned to user with their tasks and feedback
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
@@ -531,6 +539,20 @@ export const getVendorPerformanceReport = async (req, res, next) => {
         const assignmentResult = await db.query(assignmentQuery, [task.id]);
         const assignment = assignmentResult.rows[0] || {};
 
+        // Get feedback sent by the vendor (current user)
+        const feedbackQuery = `
+          SELECT 
+            id,
+            content,
+            reply_status,
+            TO_CHAR(created_at, 'DD-Mon-YYYY HH24:MI') as created_at
+          FROM task_comments
+          WHERE task_id = $1 AND user_id = $2
+          ORDER BY created_at DESC
+        `;
+        const feedbackResult = await db.query(feedbackQuery, [task.id, userId]);
+        const feedback = feedbackResult.rows.length > 0 ? feedbackResult.rows : null;
+
         allTasks.push({
           id: task.id,
           task_title: task.title,
@@ -544,7 +566,8 @@ export const getVendorPerformanceReport = async (req, res, next) => {
                   task.status === 'in_progress' ? 'In Progress' :
                   task.status === 'completed' ? 'Completed' :
                   task.status === 'on_hold' ? 'On Hold' :
-                  task.status === 'cancelled' ? 'Cancelled' : 'Pending'
+                  task.status === 'cancelled' ? 'Cancelled' : 'Pending',
+          feedback: feedback
         });
       }
     }

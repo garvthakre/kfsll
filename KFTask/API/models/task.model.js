@@ -573,6 +573,113 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
   return rows;
 },
 /**
+ * Find all tasks with daily updates data  
+ */
+async findAllWithDailyUpdatesData(limit = 10, offset = 0, filters = {}) {
+  let query = `
+    SELECT DISTINCT t.id,
+      t.title,
+      t.project_id,
+      p.title as project_name,
+      t.assignee_id,
+      a.first_name || ' ' || a.last_name as assignee_name,
+      t.created_by,
+      c.first_name || ' ' || c.last_name as created_by_name,
+      t.status,
+      t.due_date,
+      t.created_at,
+      t.updated_at
+    FROM tasks t
+    LEFT JOIN projects p ON t.project_id = p.id
+    LEFT JOIN users a ON t.assignee_id = a.id
+    LEFT JOIN users c ON t.created_by = c.id
+    INNER JOIN daily_updates du ON t.id = du.task_id
+    WHERE 1=1
+    AND t.status != 'completed'
+  `;
+  
+  const queryParams = [];
+  let paramIndex = 1;
+
+  // ✅ Add filters with placeholders
+  if (filters.vendor_id) {
+    query += ` AND a.working_for = $${paramIndex}`;
+    queryParams.push(filters.vendor_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.assignee_id) {
+    query += ` AND t.assignee_id = $${paramIndex}`;
+    queryParams.push(filters.assignee_id);
+    paramIndex++;
+  }
+
+  if (filters.update_date_start) {
+    query += ` AND du.update_date >= $${paramIndex}`;
+    queryParams.push(filters.update_date_start);
+    paramIndex++;
+  }
+
+  if (filters.update_date_end) {
+    query += ` AND du.update_date <= $${paramIndex}`;
+    queryParams.push(filters.update_date_end);
+    paramIndex++;
+  }
+
+  query += ' ORDER BY t.updated_at DESC';
+
+  // ✅ Pagination
+  if (limit !== null) {
+    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+    queryParams.push(limit, offset);
+  }
+
+  const { rows } = await db.query(query, queryParams);
+  
+  // ✅ Fetch daily updates for each task
+  for (let task of rows) {
+    let updatesQuery = `
+      SELECT 
+        du.*,
+        u.first_name || ' ' || u.last_name as user_name,
+        u.profile_image
+      FROM daily_updates du
+      JOIN users u ON du.user_id = u.id
+      WHERE du.task_id = $1
+    `;
+    
+    const updateParams = [task.id];
+    let updateParamIndex = 2;
+
+    if (filters.update_date_start) {
+      updatesQuery += ` AND du.update_date >= $${updateParamIndex}`;
+      updateParams.push(filters.update_date_start);
+      updateParamIndex++;
+    }
+
+    if (filters.update_date_end) {
+      updatesQuery += ` AND du.update_date <= $${updateParamIndex}`;
+      updateParams.push(filters.update_date_end);
+      updateParamIndex++;
+    }
+
+    updatesQuery += ` ORDER BY du.update_date DESC, du.created_at DESC`;
+
+    const { rows: dailyUpdates } = await db.query(updatesQuery, updateParams);
+    task.daily_updates = dailyUpdates;
+    task.daily_updates_count = dailyUpdates.length;
+  }
+  
+  return rows;
+}
+,
+/**
  * Get verifications done by a specific user
  */
 async getVerificationsByUser(userId, limit = 10, offset = 0) {

@@ -137,17 +137,35 @@ async findById(id) {
    * @returns {Promise<Array>} - Array of users
    */
 async findAll(limit = 10, offset = 0) {
-  const query = `
-    SELECT id, first_name, last_name, email, role, department, 
-    position, status, designation, type, working_type, working_for,phone_no, created_at, updated_at
-    FROM users
-    WHERE id != 999
-    ORDER BY created_at DESC
-    LIMIT $1 OFFSET $2
-  `;
-  
-  const { rows } = await db.query(query, [limit, offset]);
-  return rows;
+const query = `
+  SELECT 
+    u.id, 
+    u.first_name, 
+    u.last_name, 
+    u.email, 
+    u.role, 
+    u.department, 
+    u.position, 
+    u.status, 
+    u.designation, 
+    u.type, 
+    u.working_type, 
+    u.working_for, 
+    u.phone_no, 
+    u.created_at, 
+    u.updated_at,
+    COALESCE(v.company_name, uv.first_name || ' ' || uv.last_name) AS working_for_name
+  FROM users u
+  LEFT JOIN vendors v ON u.working_for = v.id
+  LEFT JOIN users uv ON u.working_for = uv.id  
+  WHERE u.id != 999
+  ORDER BY u.created_at DESC
+  LIMIT $1 OFFSET $2
+`;
+
+const { rows } = await db.query(query, [limit, offset]);
+return rows;
+
 },
 /**
  * Get all users' IDs and names with roles either 'employee' or 'consultant'
