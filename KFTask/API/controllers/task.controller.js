@@ -994,7 +994,48 @@ async getFeedback(req, res) {
     return res.status(500).json({ message: 'Server error while fetching feedback' });
   }
 },
+/**
+ * Get all feedback with pagination and filters
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+async getAllFeedback(req, res) {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
 
+    // Build filters object
+    const filters = {
+      user_id: req.query.user_id ? parseInt(req.query.user_id) : null,
+      project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
+      reply_status: req.query.reply_status
+    };
+
+    // Remove undefined filters
+    Object.keys(filters).forEach(key => {
+      if (filters[key] === undefined || filters[key] === null) {
+        delete filters[key];
+      }
+    });
+
+    const feedback = await TaskModel.getAllFeedback(limit, offset, filters);
+    const total = await TaskModel.countAllFeedback(filters);
+
+    return res.status(200).json({ 
+      feedback,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get all feedback error:', error);
+    return res.status(500).json({ message: 'Server error while fetching feedback' });
+  }
+},
 /**
  * Get replies for a feedback with pagination and filters
  */

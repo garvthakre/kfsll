@@ -755,6 +755,98 @@ async getComments(taskId, limit = 50, offset = 0, filters = {}) {
   
   return rows;
 },
+/**
+ * Get all feedback with pagination and filters
+ */
+async getAllFeedback(limit = 50, offset = 0, filters = {}) {
+  let query = `
+    SELECT 
+      tc.*,
+      u.first_name || ' ' || u.last_name as user_name,
+      u.profile_image,
+      u.role,
+      t.id as task_id,
+      t.title as task_title,
+      t.project_id,
+      p.title as project_title
+    FROM task_comments tc
+    JOIN users u ON tc.user_id = u.id
+    JOIN tasks t ON tc.task_id = t.id
+    LEFT JOIN projects p ON t.project_id = p.id
+    WHERE 1=1
+  `;
+  
+  const queryParams = [];
+  let paramIndex = 1;
+
+  // Add filters
+  if (filters.user_id) {
+    query += ` AND tc.user_id = $${paramIndex}`;
+    queryParams.push(filters.user_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.reply_status) {
+    query += ` AND tc.reply_status = $${paramIndex}`;
+    queryParams.push(filters.reply_status);
+    paramIndex++;
+  }
+
+  query += ` ORDER BY tc.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  queryParams.push(limit, offset);
+
+  const { rows } = await db.query(query, queryParams);
+  
+  // Get replies for each feedback
+  for (let feedback of rows) {
+    feedback.replies = await this.getFeedbackReplies(feedback.id);
+  }
+  
+  return rows;
+},
+
+/**
+ * Count total feedback with filters
+ */
+async countAllFeedback(filters = {}) {
+  let query = `
+    SELECT COUNT(*) as total
+    FROM task_comments tc
+    JOIN tasks t ON tc.task_id = t.id
+    WHERE 1=1
+  `;
+  
+  const queryParams = [];
+  let paramIndex = 1;
+
+  // Add filters
+  if (filters.user_id) {
+    query += ` AND tc.user_id = $${paramIndex}`;
+    queryParams.push(filters.user_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.reply_status) {
+    query += ` AND tc.reply_status = $${paramIndex}`;
+    queryParams.push(filters.reply_status);
+    paramIndex++;
+  }
+
+  const { rows } = await db.query(query, queryParams);
+  return parseInt(rows[0].total);
+},
   /**
    * Get task statistics by status
    */
