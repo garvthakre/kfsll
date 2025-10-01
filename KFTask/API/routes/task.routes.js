@@ -1818,6 +1818,127 @@ router.post('/:id/feedback/:feedback_id/replies', [
   authenticateToken,
   check('content').notEmpty().withMessage('Reply content is required')
 ], TaskController.addFeedbackReply);
+/**
+ * @swagger
+ * /api/tasks/feedback/pending/{user_id}:
+ *   get:
+ *     summary: Get all pending feedback for a specific user
+ *     description: Retrieve all feedback with 'pending' reply_status for tasks managed by the specified user (admin/vendor). Once feedback is replied to, it no longer appears in this list. No pagination or filters.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID (admin/vendor) to get pending feedback for
+ *         example: 2
+ *     responses:
+ *       200:
+ *         description: Pending feedback retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 feedback:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: Feedback ID
+ *                         example: 123
+ *                       task_id:
+ *                         type: integer
+ *                         description: Task ID
+ *                         example: 45
+ *                       task_title:
+ *                         type: string
+ *                         description: Task title
+ *                         example: "Complete landing page"
+ *                       content:
+ *                         type: string
+ *                         description: Feedback content
+ *                         example: "Please review the design changes"
+ *                       reply_status:
+ *                         type: string
+ *                         enum: [pending]
+ *                         description: Reply status (always 'pending' in this endpoint)
+ *                         example: "pending"
+ *                       created_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: When feedback was created
+ *                         example: "2025-10-01T10:30:00Z"
+ *                       feedback_creator_id:
+ *                         type: integer
+ *                         description: User ID who created the feedback
+ *                         example: 5
+ *                       feedback_creator_name:
+ *                         type: string
+ *                         description: Name of user who created feedback
+ *                         example: "John Doe"
+ *                       feedback_creator_image:
+ *                         type: string
+ *                         description: Profile image of feedback creator
+ *                         example: "profile.jpg"
+ *                       assignee_name:
+ *                         type: string
+ *                         description: Name of task assignee
+ *                         example: "Jane Smith"
+ *                       project_title:
+ *                         type: string
+ *                         description: Project title
+ *                         example: "Website Redesign"
+ *                 total:
+ *                   type: integer
+ *                   description: Total number of pending feedback items
+ *                   example: 5
+ *             example:
+ *               feedback:
+ *                 - id: 123
+ *                   task_id: 45
+ *                   task_title: "Complete landing page"
+ *                   content: "Please review the design changes"
+ *                   reply_status: "pending"
+ *                   created_at: "2025-10-01T10:30:00Z"
+ *                   feedback_creator_id: 5
+ *                   feedback_creator_name: "John Doe"
+ *                   feedback_creator_image: "profile.jpg"
+ *                   assignee_name: "Jane Smith"
+ *                   project_title: "Website Redesign"
+ *                 - id: 124
+ *                   task_id: 46
+ *                   task_title: "Setup database"
+ *                   content: "Need clarification on schema"
+ *                   reply_status: "pending"
+ *                   created_at: "2025-10-01T11:00:00Z"
+ *                   feedback_creator_id: 6
+ *                   feedback_creator_name: "Alice Brown"
+ *                   feedback_creator_image: "alice.jpg"
+ *                   assignee_name: "Bob Wilson"
+ *                   project_title: "Backend API"
+ *               total: 2
+ *       400:
+ *         description: Invalid user ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Valid user ID is required"
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/feedback/pending/:user_id', authenticateToken, TaskController.getPendingFeedback);
 
 /**
  * @swagger

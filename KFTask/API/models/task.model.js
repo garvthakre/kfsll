@@ -847,7 +847,43 @@ async addDailyUpdate(updateData) {
   const { rows } = await db.query(query, values);
   return rows[0];
 },
+/**
+ * Get all pending feedback for a specific user
+ * Returns feedback assigned to tasks where the user is either:
+ * - The vendor (working_for field in assignee's user record)
+ * - An admin/manager
+ * Only returns feedback with 'pending' reply_status
+ */
+async getPendingFeedback(userId) {
+  const query = `
+    SELECT 
+      tc.id,
+      tc.task_id,
+      t.title as task_title,
+      tc.content,
+      tc.reply_status,
+      tc.created_at,
+      tc.user_id as feedback_creator_id,
+      u.first_name || ' ' || u.last_name as feedback_creator_name,
+      u.profile_image as feedback_creator_image,
+      a.first_name || ' ' || a.last_name as assignee_name,
+      p.title as project_title
+    FROM task_comments tc
+    JOIN tasks t ON tc.task_id = t.id
+    JOIN users u ON tc.user_id = u.id
+    JOIN users a ON t.assignee_id = a.id
+    LEFT JOIN projects p ON t.project_id = p.id
+    WHERE tc.reply_status = 'pending'
+      AND (
+        a.working_for = $1
+        OR t.created_by = $1
+      )
+    ORDER BY tc.created_at DESC
+  `;
 
+  const { rows } = await db.query(query, [userId]);
+  return rows;
+},
   /**
    * Get daily updates for task
    */
