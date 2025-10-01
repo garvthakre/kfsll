@@ -648,6 +648,132 @@ router.get('/feedback/:user_id', authenticateToken, TaskController.getAllFeedbac
 router.get('/my-projectsTask', authenticateToken, TaskController.getMyProjectsTask);
 /**
  * @swagger
+ * /api/tasks/my-verifications:
+ *   get:
+ *     summary: Get verification history for logged-in user
+ *     description: Retrieve all task verifications performed by the authenticated user (vendor) with pagination
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of verifications per page
+ *         example: 10
+ *     responses:
+ *       200:
+ *         description: List of verifications performed by user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 verifications:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         description: Verification ID
+ *                         example: 1
+ *                       task_id:
+ *                         type: integer
+ *                         description: Task ID that was verified
+ *                         example: 45
+ *                       task_title:
+ *                         type: string
+ *                         description: Task title
+ *                         example: "Complete project documentation"
+ *                       project_id:
+ *                         type: integer
+ *                         description: Project ID
+ *                         example: 5
+ *                       project_title:
+ *                         type: string
+ *                         description: Project title
+ *                         example: "Website Development"
+ *                       assignee_id:
+ *                         type: integer
+ *                         description: Task assignee user ID
+ *                         example: 10
+ *                       assignee_name:
+ *                         type: string
+ *                         description: Name of task assignee
+ *                         example: "John Doe"
+ *                       verified:
+ *                         type: boolean
+ *                         description: Whether task was approved or rejected
+ *                         example: true
+ *                       feedback:
+ *                         type: string
+ *                         description: Vendor feedback message
+ *                         example: "Good work, task completed as expected"
+ *                       rating:
+ *                         type: number
+ *                         description: Rating given (1-5, only when verified is true)
+ *                         example: 4
+ *                       verified_at:
+ *                         type: string
+ *                         format: date-time
+ *                         description: When verification was performed
+ *                         example: "2025-09-30T14:30:00Z"
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       description: Total number of verifications
+ *                       example: 25
+ *                     page:
+ *                       type: integer
+ *                       description: Current page number
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       description: Verifications per page
+ *                       example: 10
+ *                     pages:
+ *                       type: integer
+ *                       description: Total number of pages
+ *                       example: 3
+ *             example:
+ *               verifications:
+ *                 - id: 1
+ *                   task_id: 45
+ *                   task_title: "Complete project documentation"
+ *                   project_id: 5
+ *                   project_title: "Website Development"
+ *                   assignee_id: 10
+ *                   assignee_name: "John Doe"
+ *                   verified: true
+ *                   feedback: "Good work, task completed as expected"
+ *                   rating: 4
+ *                   verified_at: "2025-09-30T14:30:00Z"
+ *               pagination:
+ *                 total: 25
+ *                 page: 1
+ *                 limit: 10
+ *                 pages: 3
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/my-verifications', authenticateToken, TaskController.getMyVerifications);
+
+/**
+ * @swagger
  * /api/tasks/pending-verification/{project_id}:
  *   get:
  *     summary: Get tasks pending verification by project ID

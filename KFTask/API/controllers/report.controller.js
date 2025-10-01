@@ -452,6 +452,7 @@ export const getProjectStatusReport = async (req, res, next) => {
     next(error);
   }
 };
+
 /**
  * Get vendor performance report with filtering and pagination
  * Shows projects assigned to user with their tasks
@@ -462,11 +463,11 @@ export const getProjectStatusReport = async (req, res, next) => {
 export const getVendorPerformanceReport = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { project_id, task_status, page = 1, limit = 10 } = req.query;
+    const { project_id = 0, task_status = 0, page = 1, limit = 10 } = req.query;
 
     // Parse pagination parameters
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
+    const pageNum = Math.max(1, parseInt(page));
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const offset = (pageNum - 1) * limitNum;
 
     // Get user's projects using the working model
@@ -476,115 +477,84 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       return res.status(200).json({
         success: true,
         data: {
-          projects: [],
-          filters: {
-            selected_project: project_id || null,
-            selected_status: task_status || 'all'
-          },
+          tasks: [],
           pagination: {
-            current_page: pageNum,
-            per_page: limitNum,
-            total_items: 0,
-            total_pages: 0
+            total: 0,
+            page: pageNum,
+            limit: limitNum,
+            totalPages: 0,
+            hasNextPage: false,
+            hasPrevPage: false
+          },
+          filters_applied: {
+            project_id: parseInt(project_id),
+            task_status: task_status
           }
-        },
-        message: 'No projects found'
+        }
       });
     }
 
-    // Get tasks for each project using the working model
-    const projectsWithTasks = await Promise.all(
-      userProjects.map(async (project) => {
-        // Apply project filter
-        if (project_id && project_id !== '0' && project_id !== 'all') {
-          if (parseInt(project_id) !== project.id) {
-            return null;
+    // Collect all tasks from all projects
+    let allTasks = [];
+    
+    for (const project of userProjects) {
+      // Apply project filter
+      if (project_id && parseInt(project_id) !== 0) {
+        if (parseInt(project_id) !== project.id) {
+          continue;
+        }
+      }
+
+      // Get all tasks for this project
+      const projectTasks = await ProjectModel.getProjectTasks(project.id);
+
+      // Transform tasks to match response format
+      for (const task of projectTasks) {
+        // Apply task status filter
+        if (task_status && task_status !== '0') {
+          if (task.status !== task_status) {
+            continue;
           }
         }
 
-        // Get all tasks for this project
-        const allTasks = await ProjectModel.getProjectTasks(project.id);
+        // Get task assignments
+        const assignmentQuery = `
+          SELECT 
+            ta.assigned_at,
+            u.id as assignee_id,
+            u.first_name || ' ' || u.last_name as assignee_name
+          FROM task_assignments ta
+          LEFT JOIN users u ON ta.user_id = u.id
+          WHERE ta.task_id = $1
+          LIMIT 1
+        `;
+        const assignmentResult = await db.query(assignmentQuery, [task.id]);
+        const assignment = assignmentResult.rows[0] || {};
 
-        // Apply task status filter
-        let filteredTasks = allTasks;
-        if (task_status && task_status !== 'all' && task_status !== '0') {
-          filteredTasks = allTasks.filter(task => task.status === task_status);
-        }
-
-        // Get assignee details for each task
-        const tasksWithDetails = await Promise.all(
-          filteredTasks.map(async (task) => {
-            // Get task assignments
-            const assignmentQuery = `
-              SELECT 
-                ta.assigned_at,
-                u.id as assignee_id,
-                u.first_name || ' ' || u.last_name as assignee_name
-              FROM task_assignments ta
-              LEFT JOIN users u ON ta.user_id = u.id
-              WHERE ta.task_id = $1
-              LIMIT 1
-            `;
-            const assignmentResult = await db.query(assignmentQuery, [task.id]);
-            const assignment = assignmentResult.rows[0] || {};
-
-            return {
-              task_id: task.id,
-              task_title: task.title,
-              status: task.status || 'new',
-              due_date: task.due_date,
-              created_at: task.created_at,
-              assigned_date: assignment.assigned_at || task.created_at,
-              assignee_id: assignment.assignee_id || null,
-              assignee_name: assignment.assignee_name || 'Unassigned'
-            };
-          })
-        );
-
-        // Skip projects with no tasks if filters are applied
-        if ((project_id || task_status !== 'all') && tasksWithDetails.length === 0) {
-          return null;
-        }
-
-        return {
+        allTasks.push({
+          id: task.id,
+          task_title: task.title,
+          assignee_id: assignment.assignee_id || null,
+          project_title: project.title,
           project_id: project.id,
-          project_name: project.title,
-          start_date: project.start_date,
-          end_date: project.end_date,
-          task_count: tasksWithDetails.length,
-          tasks: tasksWithDetails
-        };
-      })
-    );
+          assigned_user: assignment.assignee_name || 'Unassigned',
+          created_on: task.created_at ? new Date(task.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null,
+          completion_date: task.due_date ? new Date(task.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : null,
+          status: task.status === 'planning' ? 'planning' :
+                  task.status === 'in_progress' ? 'In Progress' :
+                  task.status === 'completed' ? 'Completed' :
+                  task.status === 'on_hold' ? 'On Hold' :
+                  task.status === 'cancelled' ? 'Cancelled' : 'Pending'
+        });
+      }
+    }
 
-    // Remove null entries (filtered out projects)
-    const validProjects = projectsWithTasks.filter(p => p !== null);
+    // Sort by created date descending
+    allTasks.sort((a, b) => new Date(b.created_on) - new Date(a.created_on));
 
-    // Calculate total items and pages before pagination
-    const totalItems = validProjects.length;
-    const totalPages = Math.ceil(totalItems / limitNum);
-
-    // Apply pagination
-    const paginatedProjects = validProjects.slice(offset, offset + limitNum);
-
-    // Calculate overall statistics
-    let totalTasks = 0;
-    let completedTasks = 0;
-    let inProgressTasks = 0;
-    let pendingTasks = 0;
-
-    paginatedProjects.forEach(project => {
-      project.tasks.forEach(task => {
-        totalTasks++;
-        if (task.status === 'completed') {
-          completedTasks++;
-        } else if (task.status === 'in_progress') {
-          inProgressTasks++;
-        } else if (task.status === 'todo' || task.status === 'new') {
-          pendingTasks++;
-        }
-      });
-    });
+    // Calculate total and apply pagination
+    const total = allTasks.length;
+    const paginatedTasks = allTasks.slice(offset, offset + limitNum);
 
     // Log this report access
     await logUserAction(
@@ -593,26 +563,21 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       `Generated vendor performance report with filters: project_id=${project_id || 'all'}, task_status=${task_status || 'all'}`
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: {
-        summary: {
-          total_projects: paginatedProjects.length,
-          total_tasks: totalTasks,
-          completed_tasks: completedTasks,
-          in_progress_tasks: inProgressTasks,
-          pending_tasks: pendingTasks
-        },
-        projects: paginatedProjects,
-        filters: {
-          selected_project: project_id || null,
-          selected_status: task_status || 'all'
-        },
+        tasks: paginatedTasks,
         pagination: {
-          current_page: pageNum,
-          per_page: limitNum,
-          total_items: totalItems,
-          total_pages: totalPages
+          total,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: Math.ceil(total / limitNum),
+          hasNextPage: pageNum < Math.ceil(total / limitNum),
+          hasPrevPage: pageNum > 1
+        },
+        filters_applied: {
+          project_id: parseInt(project_id),
+          task_status: task_status
         }
       }
     });

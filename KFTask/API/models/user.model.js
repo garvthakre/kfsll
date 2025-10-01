@@ -39,20 +39,32 @@ async create(userData) {
 
   if (providedworkingfor) {
     try {
-      // Check if providedworkingfor exists in vendors only
+      // Check vendors table
       const vendorCheck = await db.query(
         `SELECT id FROM vendors WHERE id = $1`,
         [providedworkingfor]
       );
 
       if (vendorCheck.rows.length > 0) {
-        // Found as vendor
         working_for = providedworkingfor;
         working_for_type = 'vendor';
+      } else {
+        // If not in vendors, check users table with role=vendor
+        const userVendorCheck = await db.query(
+          `SELECT id FROM users WHERE id = $1 AND role = 'vendor'`,
+          [providedworkingfor]
+        );
+
+        if (userVendorCheck.rows.length > 0) {
+          working_for = providedworkingfor;
+          working_for_type = 'vendor';
+        } else {
+          // fallback
+          working_for = 999;
+          working_for_type = 'user';
+        }
       }
-   
     } catch (error) {
-      // If any database error occurs during check, use default values
       console.warn('Error checking vendor relationship:', error.message);
       working_for = 999;
       working_for_type = 'user';
@@ -89,6 +101,7 @@ async create(userData) {
     throw error;
   }
 }
+
 ,
 
   /**

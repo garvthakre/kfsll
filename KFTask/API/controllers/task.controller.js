@@ -503,6 +503,36 @@ async getAllVendorsWithDailyUpdates(req, res) {
   }
 },
 /**
+ * Get verification history for logged-in user
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Object} - List of verifications by user
+ */
+async getMyVerifications(req, res) {
+  try {
+    const userId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const verifications = await TaskModel.getVerificationsByUser(userId, limit, offset);
+    const total = await TaskModel.countVerificationsByUser(userId);
+
+    return res.status(200).json({
+      verifications,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get my verifications error:', error);
+    return res.status(500).json({ message: 'Server error while fetching verifications' });
+  }
+},
+/**
  * Get tasks pending verification by project ID
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object

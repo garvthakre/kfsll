@@ -125,7 +125,7 @@ async register(req, res) {
 
     // Only allow admin to create users with admin/manager role
     const requestingUserRole = req.user?.role;
-    if ((role === 'admin' || role === 'manager') && requestingUserRole !== 'admin') {
+    if ((role === 'admin' || role === 'vendor') && requestingUserRole !== 'admin') {
       return res.status(403).json({ 
         message: 'You do not have permission to create users with this role' 
       });

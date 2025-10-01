@@ -572,7 +572,49 @@ async findAllWithDailyUpdates(limit = 10, offset = 0, filters = {}) {
   const { rows } = await db.query(query, queryParams);
   return rows;
 },
+/**
+ * Get verifications done by a specific user
+ */
+async getVerificationsByUser(userId, limit = 10, offset = 0) {
+  const query = `
+    SELECT 
+      tl.id,
+      tl.task_id,
+      t.title as task_title,
+      tl.action,
+      tl.description,
+      tl.created_at as verified_at,
+      t.rating,
+      a.first_name || ' ' || a.last_name as assignee_name,
+      p.title as project_title
+    FROM task_logs tl
+    JOIN tasks t ON tl.task_id = t.id
+    LEFT JOIN users a ON t.assignee_id = a.id
+    LEFT JOIN projects p ON t.project_id = p.id
+    WHERE tl.user_id = $1
+      AND tl.action IN ('verify_completed', 'verify_rejected')
+    ORDER BY tl.created_at DESC
+    LIMIT $2 OFFSET $3
+  `;
 
+  const { rows } = await db.query(query, [userId, limit, offset]);
+  return rows;
+},
+
+/**
+ * Count total verifications by user
+ */
+async countVerificationsByUser(userId) {
+  const query = `
+    SELECT COUNT(*) as total
+    FROM task_logs
+    WHERE user_id = $1
+      AND action IN ('verify_completed', 'verify_rejected')
+  `;
+
+  const { rows } = await db.query(query, [userId]);
+  return parseInt(rows[0].total);
+},
 /**
  * Add reply to feedback
  */
