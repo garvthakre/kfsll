@@ -1165,6 +1165,30 @@ async getPendingFeedback(req, res) {
     return res.status(500).json({ message: 'Server error while fetching pending feedback' });
   }
 },
+/**
+ * Get pending feedback with minimal info (task_id and task_title only)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+async getPendingFeedbackidandname(req, res) {
+  try {
+    const userId = parseInt(req.params.user_id);
+
+    if (!userId || isNaN(userId)) {
+      return res.status(400).json({ message: 'Valid user ID is required' });
+    }
+
+    const feedback = await TaskModel.getPendingFeedbackMin(userId);
+
+    return res.status(200).json({ 
+      feedback,
+      total: feedback.length
+    });
+  } catch (error) {
+    console.error('Get pending feedback minimal error:', error);
+    return res.status(500).json({ message: 'Server error while fetching pending feedback' });
+  }
+},
   /**
    * Track time on task
    * @param {Object} req - Express request object

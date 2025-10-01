@@ -1939,6 +1939,65 @@ router.post('/:id/feedback/:feedback_id/replies', [
  *         description: Server error
  */
 router.get('/feedback/pending/:user_id', authenticateToken, TaskController.getPendingFeedback);
+/**
+ * @swagger
+ * /api/tasks/feedback/id-name/{user_id}:
+ *   get:
+ *     summary: Get pending feedback (task ID and title only)
+ *     description: Retrieve only task_id and task_title for tasks with pending feedback for the specified user. No pagination, no filters, minimal response.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: User ID (admin/vendor) to get pending feedback for
+ *         example: 2
+ *     responses:
+ *       200:
+ *         description: Minimal pending feedback retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 feedback:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       task_id:
+ *                         type: integer
+ *                         description: Task ID
+ *                         example: 45
+ *                       task_title:
+ *                         type: string
+ *                         description: Task title
+ *                         example: "Complete landing page"
+ *                 total:
+ *                   type: integer
+ *                   description: Total number of tasks with pending feedback
+ *                   example: 3
+ *             example:
+ *               feedback:
+ *                 - task_id: 45
+ *                   task_title: "Complete landing page"
+ *                 - task_id: 46
+ *                   task_title: "Setup database"
+ *                 - task_id: 47
+ *                   task_title: "Create API endpoints"
+ *               total: 3
+ *       400:
+ *         description: Invalid user ID
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/feedback/id-name/:user_id', authenticateToken, TaskController.getPendingFeedbackidandname);
 
 /**
  * @swagger

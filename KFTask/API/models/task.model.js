@@ -884,6 +884,28 @@ async getPendingFeedback(userId) {
   const { rows } = await db.query(query, [userId]);
   return rows;
 },
+/**
+ * Get pending feedback with only task_id and task_title
+ */
+async getPendingFeedbackMin(userId) {
+  const query = `
+    SELECT DISTINCT
+      tc.task_id,
+      t.title as task_title
+    FROM task_comments tc
+    JOIN tasks t ON tc.task_id = t.id
+    JOIN users a ON t.assignee_id = a.id
+    WHERE tc.reply_status = 'pending'
+      AND (
+        a.working_for = $1
+        OR t.created_by = $1
+      )
+    ORDER BY tc.task_id ASC
+  `;
+
+  const { rows } = await db.query(query, [userId]);
+  return rows;
+},
   /**
    * Get daily updates for task
    */
