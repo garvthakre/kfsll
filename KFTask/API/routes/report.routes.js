@@ -273,6 +273,18 @@ router.get('/project-status', authenticateToken, getProjectStatusReport);
  *           type: string
  *           enum: [all, completed, in-progress, pending]
  *         description: Filter by task status
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
  *     responses:
  *       200:
  *         description: Performance report retrieved successfully
@@ -301,6 +313,17 @@ router.get('/project-status', authenticateToken, getProjectStatusReport);
  *                     filters:
  *                       type: object
  *                       description: Applied filters
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         current_page:
+ *                           type: integer
+ *                         per_page:
+ *                           type: integer
+ *                         total_items:
+ *                           type: integer
+ *                         total_pages:
+ *                           type: integer
  *       401:
  *         description: Unauthorized
  *       404:
@@ -308,7 +331,7 @@ router.get('/project-status', authenticateToken, getProjectStatusReport);
  *       500:
  *         description: Server error
  */
-router.get('/vendor-performance', authenticateToken,  getVendorPerformanceReport);
+router.get('/vendor-performance', authenticateToken, getVendorPerformanceReport);
 
 /**
  * @swagger

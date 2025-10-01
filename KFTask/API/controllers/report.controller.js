@@ -453,7 +453,7 @@ export const getProjectStatusReport = async (req, res, next) => {
   }
 };
 /**
- * Get vendor performance report with filtering
+ * Get vendor performance report with filtering and pagination
  * Shows projects assigned to user with their tasks
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -462,7 +462,12 @@ export const getProjectStatusReport = async (req, res, next) => {
 export const getVendorPerformanceReport = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { project_id, task_status } = req.query;
+    const { project_id, task_status, page = 1, limit = 10 } = req.query;
+
+    // Parse pagination parameters
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
 
     // Get user's projects using the working model
     const userProjects = await ProjectModel.getMyProjects(userId);
@@ -475,6 +480,12 @@ export const getVendorPerformanceReport = async (req, res, next) => {
           filters: {
             selected_project: project_id || null,
             selected_status: task_status || 'all'
+          },
+          pagination: {
+            current_page: pageNum,
+            per_page: limitNum,
+            total_items: 0,
+            total_pages: 0
           }
         },
         message: 'No projects found'
@@ -549,13 +560,20 @@ export const getVendorPerformanceReport = async (req, res, next) => {
     // Remove null entries (filtered out projects)
     const validProjects = projectsWithTasks.filter(p => p !== null);
 
+    // Calculate total items and pages before pagination
+    const totalItems = validProjects.length;
+    const totalPages = Math.ceil(totalItems / limitNum);
+
+    // Apply pagination
+    const paginatedProjects = validProjects.slice(offset, offset + limitNum);
+
     // Calculate overall statistics
     let totalTasks = 0;
     let completedTasks = 0;
     let inProgressTasks = 0;
     let pendingTasks = 0;
 
-    validProjects.forEach(project => {
+    paginatedProjects.forEach(project => {
       project.tasks.forEach(task => {
         totalTasks++;
         if (task.status === 'completed') {
@@ -579,16 +597,22 @@ export const getVendorPerformanceReport = async (req, res, next) => {
       success: true,
       data: {
         summary: {
-          total_projects: validProjects.length,
+          total_projects: paginatedProjects.length,
           total_tasks: totalTasks,
           completed_tasks: completedTasks,
           in_progress_tasks: inProgressTasks,
           pending_tasks: pendingTasks
         },
-        projects: validProjects,
+        projects: paginatedProjects,
         filters: {
           selected_project: project_id || null,
           selected_status: task_status || 'all'
+        },
+        pagination: {
+          current_page: pageNum,
+          per_page: limitNum,
+          total_items: totalItems,
+          total_pages: totalPages
         }
       }
     });

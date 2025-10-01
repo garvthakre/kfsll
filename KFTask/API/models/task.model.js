@@ -873,7 +873,7 @@ async getPendingFeedback(userId) {
     JOIN users u ON tc.user_id = u.id
     JOIN users a ON t.assignee_id = a.id
     LEFT JOIN projects p ON t.project_id = p.id
-    WHERE tc.reply_status = 'pending'
+  
       AND (
         a.working_for = $1
         OR t.created_by = $1

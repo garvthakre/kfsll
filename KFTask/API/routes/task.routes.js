@@ -1820,10 +1820,10 @@ router.post('/:id/feedback/:feedback_id/replies', [
 ], TaskController.addFeedbackReply);
 /**
  * @swagger
- * /api/tasks/feedback/pending/{user_id}:
+ * /api/tasks/feedback/admin/{user_id}:
  *   get:
  *     summary: Get all pending feedback for a specific user
- *     description: Retrieve all feedback with 'pending' reply_status for tasks managed by the specified user (admin/vendor). Once feedback is replied to, it no longer appears in this list. No pagination or filters.
+ *     description: Retrieve all feedback  for tasks managed by the specified user (admin/vendor). Once feedback is replied to, it no longer appears in this list. No pagination or filters.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -1938,7 +1938,7 @@ router.post('/:id/feedback/:feedback_id/replies', [
  *       500:
  *         description: Server error
  */
-router.get('/feedback/pending/:user_id', authenticateToken, TaskController.getPendingFeedback);
+router.get('/feedback/admin/:user_id', authenticateToken, TaskController.getPendingFeedback);
 /**
  * @swagger
  * /api/tasks/feedback/id-name/{user_id}:
