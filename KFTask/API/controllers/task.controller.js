@@ -1031,40 +1031,7 @@ async addFeedbackReply(req, res) {
     return res.status(500).json({ message: 'Server error while adding reply' });
   }
 },
-/**
- * Get all feedback for a specific user with pagination
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- */
-async getAllFeedback(req, res) {
-  try {
-    const userId = parseInt(req.params.user_id);
-
-    if (!userId || isNaN(userId)) {
-      return res.status(400).json({ message: 'Valid user ID is required' });
-    }
-
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
-    const offset = (page - 1) * limit;
-
-    const feedback = await TaskModel.getAllFeedback( userId,limit, offset);
-    const total = await TaskModel.countAllFeedback(userId);
-
-    return res.status(200).json({ 
-      feedback,
-      pagination: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit)
-      }
-    });
-  } catch (error) {
-    console.error('Get all feedback error:', error);
-    return res.status(500).json({ message: 'Server error while fetching feedback' });
-  }
-},
+ 
 /**
  * Get feedback for task with pagination and filters
  */
@@ -1114,7 +1081,7 @@ async getFeedback(req, res) {
   }
 },
 /**
- * Get all feedback for a specific user with pagination
+ * Get all feedback for a specific user with pagination and filters
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
@@ -1130,8 +1097,34 @@ async getAllFeedback(req, res) {
     const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
 
-    const feedback = await TaskModel.getAllFeedback(limit, offset, userId);
-    const total = await TaskModel.countAllFeedback(userId);
+    // Build filters object from query parameters
+    const filters = {};
+    
+    // Handle project_id filter (skip if 0 or 'all')
+    if (req.query.project_id && req.query.project_id !== '0' && req.query.project_id !== 'all') {
+      const projectId = parseInt(req.query.project_id);
+      if (!isNaN(projectId) && projectId > 0) {
+        filters.project_id = projectId;
+      }
+    }
+    
+    // Handle task_id filter (skip if 0 or 'all')
+    if (req.query.task_id && req.query.task_id !== '0' && req.query.task_id !== 'all') {
+      const taskId = parseInt(req.query.task_id);
+      if (!isNaN(taskId) && taskId > 0) {
+        filters.task_id = taskId;
+      }
+    }
+    
+    // Handle reply_status filter (skip if 'all' or '0')
+    if (req.query.reply_status && req.query.reply_status !== 'all' && req.query.reply_status !== '0') {
+      filters.reply_status = req.query.reply_status;
+    }
+
+    console.log('Filters in controller:', filters); // Debug log
+
+    const feedback = await TaskModel.getAllFeedback(limit, offset, userId, filters);
+    const total = await TaskModel.countAllFeedback(userId, filters);
 
     return res.status(200).json({ 
       feedback,
@@ -1225,9 +1218,8 @@ async getFeedbackReplies(req, res) {
       return res.status(500).json({ message: 'Server error while fetching comments' });
     }
   },
-  /**
- * Get all pending feedback for a specific user (admin/vendor)
- * Only shows feedback with 'pending' reply_status
+/**
+ * Get all pending feedback for a specific user with pagination and filters
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  */
@@ -1239,11 +1231,48 @@ async getPendingFeedback(req, res) {
       return res.status(400).json({ message: 'Valid user ID is required' });
     }
 
-    const feedback = await TaskModel.getPendingFeedback(userId);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+
+    // Build filters object from query parameters
+    const filters = {};
+    
+    // Handle feedback_creator_id filter (skip if 0 or 'all')
+    if (req.query.feedback_creator_id && req.query.feedback_creator_id !== '0' && req.query.feedback_creator_id !== 'all') {
+      const creatorId = parseInt(req.query.feedback_creator_id);
+      if (!isNaN(creatorId) && creatorId > 0) {
+        filters.feedback_creator_id = creatorId;
+      }
+    }
+    
+    // Handle project_id filter (skip if 0 or 'all')
+    if (req.query.project_id && req.query.project_id !== '0' && req.query.project_id !== 'all') {
+      const projectId = parseInt(req.query.project_id);
+      if (!isNaN(projectId) && projectId > 0) {
+        filters.project_id = projectId;
+      }
+    }
+    
+    // Handle task_id filter (skip if 0 or 'all')
+    if (req.query.task_id && req.query.task_id !== '0' && req.query.task_id !== 'all') {
+      const taskId = parseInt(req.query.task_id);
+      if (!isNaN(taskId) && taskId > 0) {
+        filters.task_id = taskId;
+      }
+    }
+
+    const feedback = await TaskModel.getPendingFeedback(userId, limit, offset, filters);
+    const total = await TaskModel.countPendingFeedback(userId, filters);
 
     return res.status(200).json({ 
       feedback,
-      total: feedback.length
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
     });
   } catch (error) {
     console.error('Get pending feedback error:', error);

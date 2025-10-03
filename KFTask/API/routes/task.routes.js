@@ -491,7 +491,7 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
  * /api/tasks/feedback/{user_id}:
  *   get:
  *     summary: Get all feedback for a specific user
- *     description: Get all feedback created by a specific user with pagination
+ *     description: Get all feedback created by a specific user with pagination and filters
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -517,6 +517,25 @@ router.get('/stats', authenticateToken, TaskController.getTaskStats);
  *           default: 50
  *         description: Number of items per page
  *         example: 50
+ *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by project ID
+ *         example: 3
+ *       - in: query
+ *         name: task_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by task ID
+ *         example: 10
+ *       - in: query
+ *         name: reply_status
+ *         schema:
+ *           type: string
+ *           enum: [pending, replied]
+ *         description: Filter by reply status
+ *         example: pending
  *     responses:
  *       200:
  *         description: Feedback retrieved successfully
@@ -1966,8 +1985,8 @@ router.post('/:id/feedback/:feedback_id/replies', [
  * @swagger
  * /api/tasks/feedback/admin/{user_id}:
  *   get:
- *     summary: Get all pending feedback for a specific user
- *     description: Retrieve all feedback  for tasks managed by the specified user (admin/vendor). Once feedback is replied to, it no longer appears in this list. No pagination or filters.
+ *     summary: Get all pending feedback for a specific user with filters
+ *     description: Retrieve all pending feedback for tasks managed by the specified user (admin/vendor) with optional filters for feedback creator, project, and task. Use '0' or 'all' for filter parameters to show all results.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -1979,6 +1998,38 @@ router.post('/:id/feedback/:feedback_id/replies', [
  *           type: integer
  *         description: User ID (admin/vendor) to get pending feedback for
  *         example: 2
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *         example: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Number of items per page
+ *         example: 50
+ *       - in: query
+ *         name: feedback_creator_id
+ *         schema:
+ *           type: string
+ *         description: Filter by feedback creator user ID (use '0' or 'all' to show all)
+ *         example: 5
+ *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: string
+ *         description: Filter by project ID (use '0' or 'all' to show all)
+ *         example: 10
+ *       - in: query
+ *         name: task_id
+ *         schema:
+ *           type: string
+ *         description: Filter by task ID (use '0' or 'all' to show all)
+ *         example: 45
  *     responses:
  *       200:
  *         description: Pending feedback retrieved successfully
@@ -2038,10 +2089,29 @@ router.post('/:id/feedback/:feedback_id/replies', [
  *                         type: string
  *                         description: Project title
  *                         example: "Website Redesign"
- *                 total:
- *                   type: integer
- *                   description: Total number of pending feedback items
- *                   example: 5
+ *                       project_id:
+ *                         type: integer
+ *                         description: Project ID
+ *                         example: 10
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       description: Total number of pending feedback items
+ *                       example: 25
+ *                     page:
+ *                       type: integer
+ *                       description: Current page number
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       description: Items per page
+ *                       example: 50
+ *                     pages:
+ *                       type: integer
+ *                       description: Total number of pages
+ *                       example: 1
  *             example:
  *               feedback:
  *                 - id: 123
@@ -2055,18 +2125,12 @@ router.post('/:id/feedback/:feedback_id/replies', [
  *                   feedback_creator_image: "profile.jpg"
  *                   assignee_name: "Jane Smith"
  *                   project_title: "Website Redesign"
- *                 - id: 124
- *                   task_id: 46
- *                   task_title: "Setup database"
- *                   content: "Need clarification on schema"
- *                   reply_status: "pending"
- *                   created_at: "2025-10-01T11:00:00Z"
- *                   feedback_creator_id: 6
- *                   feedback_creator_name: "Alice Brown"
- *                   feedback_creator_image: "alice.jpg"
- *                   assignee_name: "Bob Wilson"
- *                   project_title: "Backend API"
- *               total: 2
+ *                   project_id: 10
+ *               pagination:
+ *                 total: 25
+ *                 page: 1
+ *                 limit: 50
+ *                 pages: 1
  *       400:
  *         description: Invalid user ID
  *         content:

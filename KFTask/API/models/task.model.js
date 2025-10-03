@@ -73,7 +73,83 @@ async findAllByUser(userId, limit = 10, offset = 0) {
   
   return tasksResult.rows;
 },
+/**
+ * Count total pending feedback for a specific user with filters
+ */
+async countPendingFeedback(userId, filters = {}) {
+  let query = `
+    SELECT COUNT(*) as total
+    FROM task_comments tc
+    JOIN tasks t ON tc.task_id = t.id
+    JOIN users a ON t.assignee_id = a.id
+    WHERE tc.reply_status = 'pending'
+      AND (
+        a.working_for = $1
+        OR t.created_by = $1
+      )
+  `;
 
+  const queryParams = [userId];
+  let paramIndex = 2;
+
+  // Add filters
+  if (filters.feedback_creator_id) {
+    query += ` AND tc.user_id = $${paramIndex}`;
+    queryParams.push(filters.feedback_creator_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.task_id) {
+    query += ` AND tc.task_id = $${paramIndex}`;
+    queryParams.push(filters.task_id);
+    paramIndex++;
+  }
+
+  const { rows } = await db.query(query, queryParams);
+  return parseInt(rows[0].total);
+},
+/**
+ * Count total feedback for a specific user with filters
+ */
+async countAllFeedback(userId, filters = {}) {
+  let query = `
+    SELECT COUNT(*) as total
+    FROM task_comments tc
+    JOIN tasks t ON tc.task_id = t.id
+    WHERE tc.user_id = $1
+  `;
+
+  const queryParams = [userId];
+  let paramIndex = 2;
+
+  // Add filters
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.task_id) {
+    query += ` AND tc.task_id = $${paramIndex}`;
+    queryParams.push(filters.task_id);
+    paramIndex++;
+  }
+
+  if (filters.reply_status) {
+    query += ` AND tc.reply_status = $${paramIndex}`;
+    queryParams.push(filters.reply_status);
+    paramIndex++;
+  }
+
+  const { rows } = await db.query(query, queryParams);
+  return parseInt(rows[0].total);
+},
 /**
  * Count total tasks for user  
  */
@@ -904,11 +980,13 @@ async getComments(taskId, limit = 50, offset = 0, filters = {}) {
   
   return rows;
 },
+
 /**
- * Get all feedback for a specific user with pagination
+ * Get all feedback for a specific user with pagination and filters
  */
-async getAllFeedback(limit = 50, offset = 0, userId) {
-  const query = `
+async getAllFeedback(limit = 50, offset = 0, userId, filters = {}) {
+ 
+  let query = `
     SELECT 
       tc.*,
       u.first_name || ' ' || u.last_name as user_name,
@@ -923,11 +1001,34 @@ async getAllFeedback(limit = 50, offset = 0, userId) {
     JOIN tasks t ON tc.task_id = t.id
     LEFT JOIN projects p ON t.project_id = p.id
     WHERE tc.user_id = $1
-    ORDER BY tc.created_at DESC 
-    LIMIT $2 OFFSET $3
   `;
 
-  const { rows } = await db.query(query, [userId, limit, offset]);
+  const queryParams = [userId];
+  let paramIndex = 2;
+
+  // Add filters
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.task_id) {
+    query += ` AND tc.task_id = $${paramIndex}`;
+    queryParams.push(filters.task_id);
+    paramIndex++;
+  }
+
+  if (filters.reply_status) {
+    query += ` AND tc.reply_status = $${paramIndex}`;
+    queryParams.push(filters.reply_status);
+    paramIndex++;
+  }
+
+  query += ` ORDER BY tc.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  queryParams.push(limit, offset);
+ 
+  const { rows } = await db.query(query, queryParams);
   
   // Get replies for each feedback
   for (let feedback of rows) {
@@ -935,20 +1036,6 @@ async getAllFeedback(limit = 50, offset = 0, userId) {
   }
   
   return rows;
-},
-
-/**
- * Count total feedback for a specific user
- */
-async countAllFeedback(userId) {
-  const query = `
-    SELECT COUNT(*) as total
-    FROM task_comments tc
-    WHERE tc.user_id = $1
-  `;
-
-  const { rows } = await db.query(query, [userId]);
-  return parseInt(rows[0].total);
 },
   /**
    * Get task statistics by status
@@ -997,14 +1084,10 @@ async addDailyUpdate(updateData) {
   return rows[0];
 },
 /**
- * Get all pending feedback for a specific user
- * Returns feedback assigned to tasks where the user is either:
- * - The vendor (working_for field in assignee's user record)
- * - An admin/manager
- * Only returns feedback with 'pending' reply_status
+ * Get all pending feedback for a specific user with pagination and filters
  */
-async getPendingFeedback(userId) {
-  const query = `
+async getPendingFeedback(userId, limit = 50, offset = 0, filters = {}) {
+  let query = `
     SELECT 
       tc.id,
       tc.task_id,
@@ -1016,21 +1099,46 @@ async getPendingFeedback(userId) {
       u.first_name || ' ' || u.last_name as feedback_creator_name,
       u.profile_image as feedback_creator_image,
       a.first_name || ' ' || a.last_name as assignee_name,
-      p.title as project_title
+      p.title as project_title,
+      p.id as project_id
     FROM task_comments tc
     JOIN tasks t ON tc.task_id = t.id
     JOIN users u ON tc.user_id = u.id
     JOIN users a ON t.assignee_id = a.id
     LEFT JOIN projects p ON t.project_id = p.id
-  
+    WHERE tc.reply_status = 'pending'
       AND (
         a.working_for = $1
         OR t.created_by = $1
       )
-    ORDER BY tc.created_at DESC
   `;
 
-  const { rows } = await db.query(query, [userId]);
+  const queryParams = [userId];
+  let paramIndex = 2;
+
+  // Add filters
+  if (filters.feedback_creator_id) {
+    query += ` AND tc.user_id = $${paramIndex}`;
+    queryParams.push(filters.feedback_creator_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.task_id) {
+    query += ` AND tc.task_id = $${paramIndex}`;
+    queryParams.push(filters.task_id);
+    paramIndex++;
+  }
+
+  query += ` ORDER BY tc.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  queryParams.push(limit, offset);
+
+  const { rows } = await db.query(query, queryParams);
   return rows;
 },
 /**
