@@ -232,7 +232,7 @@ export const getUserPerformanceReport = async (req, res, next) => {
   
       const whereClause = whereConditions.join(' AND ');
   
-      // Main query for tasks with feedback
+      // Main query for tasks with feedback AND daily updates
       const tasksQuery = `
         SELECT 
           t.id,
@@ -262,7 +262,20 @@ export const getUserPerformanceReport = async (req, res, next) => {
             )
             FROM task_comments tc
             WHERE tc.task_id = t.id AND tc.user_id = $1
-          ) as feedback
+          ) as feedback,
+          (
+            SELECT json_agg(
+              json_build_object(
+                'id', du.id,
+                'content', du.content,
+                'update_date', TO_CHAR(du.update_date, 'DD-Mon-YYYY'),
+                'status', du.status,
+                'created_at', TO_CHAR(du.created_at, 'DD-Mon-YYYY HH24:MI')
+              ) ORDER BY du.update_date DESC, du.created_at DESC
+            )
+            FROM daily_updates du
+            WHERE du.task_id = t.id
+          ) as daily_updates
         FROM tasks t
         LEFT JOIN projects p ON t.project_id = p.id
         LEFT JOIN users u ON t.assignee_id = u.id
@@ -463,7 +476,7 @@ export const getProjectStatusReport = async (req, res, next) => {
 
 /**
  * Get vendor performance report 
- * Shows projects assigned to user with their tasks and feedback
+ * Shows projects assigned to user with their tasks, feedback, and daily updates
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @param {Function} next - Express next middleware function
@@ -553,6 +566,21 @@ export const getVendorPerformanceReport = async (req, res, next) => {
         const feedbackResult = await db.query(feedbackQuery, [task.id, userId]);
         const feedback = feedbackResult.rows.length > 0 ? feedbackResult.rows : null;
 
+        // Get daily updates for the task
+        const dailyUpdatesQuery = `
+          SELECT 
+            id,
+            content,
+            TO_CHAR(update_date, 'DD-Mon-YYYY') as update_date,
+            status,
+            TO_CHAR(created_at, 'DD-Mon-YYYY HH24:MI') as created_at
+          FROM daily_updates
+          WHERE task_id = $1
+          ORDER BY update_date DESC, created_at DESC
+        `;
+        const dailyUpdatesResult = await db.query(dailyUpdatesQuery, [task.id]);
+        const daily_updates = dailyUpdatesResult.rows.length > 0 ? dailyUpdatesResult.rows : null;
+
         allTasks.push({
           id: task.id,
           task_title: task.title,
@@ -567,7 +595,8 @@ export const getVendorPerformanceReport = async (req, res, next) => {
                   task.status === 'completed' ? 'Completed' :
                   task.status === 'on_hold' ? 'On Hold' :
                   task.status === 'cancelled' ? 'Cancelled' : 'Pending',
-          feedback: feedback
+          feedback: feedback,
+          daily_updates: daily_updates
         });
       }
     }
