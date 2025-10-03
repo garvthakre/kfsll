@@ -790,7 +790,115 @@ router.get('/my-projectsTask', authenticateToken, TaskController.getMyProjectsTa
  *         description: Server error
  */
 router.get('/my-verifications', authenticateToken, TaskController.getMyVerifications);
-
+/**
+ * @swagger
+ * /api/tasks/my-daily-updates-feedback:
+ *   get:
+ *     summary: Get my daily updates with admin verification feedback
+ *     description: Retrieve all daily updates created by the logged-in user along with any verification feedback from admins/vendors
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: task_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by task ID
+ *       - in: query
+ *         name: project_id
+ *         schema:
+ *           type: integer
+ *         description: Filter by project ID
+ *       - in: query
+ *         name: date_start
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter from this date (YYYY-MM-DD)
+ *       - in: query
+ *         name: date_end
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter to this date (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: Daily updates with admin feedback
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 updates:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       daily_update_id:
+ *                         type: integer
+ *                       update_content:
+ *                         type: string
+ *                       update_date:
+ *                         type: string
+ *                         format: date
+ *                       update_status:
+ *                         type: string
+ *                       update_created_at:
+ *                         type: string
+ *                         format: date-time
+ *                       task_id:
+ *                         type: integer
+ *                       task_title:
+ *                         type: string
+ *                       task_status:
+ *                         type: string
+ *                       task_rating:
+ *                         type: number
+ *                       project_id:
+ *                         type: integer
+ *                       project_title:
+ *                         type: string
+ *                       verification_log_id:
+ *                         type: integer
+ *                       verification_action:
+ *                         type: string
+ *                       admin_feedback:
+ *                         type: string
+ *                       verified_at:
+ *                         type: string
+ *                         format: date-time
+ *                       admin_id:
+ *                         type: integer
+ *                       admin_name:
+ *                         type: string
+ *                       admin_image:
+ *                         type: string
+ *                       admin_role:
+ *                         type: string
+ *                       verification_status:
+ *                         type: string
+ *                         enum: [verified, rejected, null]
+ *                 pagination:
+ *                   type: object
+ *       401:
+ *         description: Not authenticated
+ *       500:
+ *         description: Server error
+ */
+router.get('/my-daily-updates-feedback', authenticateToken, TaskController.getMyDailyUpdatesWithFeedback);
 /**
  * @swagger
  * /api/tasks/pending-verification/{project_id}:

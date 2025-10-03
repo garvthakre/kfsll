@@ -930,6 +930,125 @@ async addComment(commentData) {
   return rows[0];
 },
 /**
+ * Get daily updates created by user with admin verification feedback
+ */
+async getMyDailyUpdatesWithFeedback(userId, limit = 10, offset = 0, filters = {}) {
+  let query = `
+    SELECT 
+      du.id as daily_update_id,
+      du.content as update_content,
+      du.update_date,
+      du.status as update_status,
+      du.created_at as update_created_at,
+      t.id as task_id,
+      t.title as task_title,
+      t.status as task_status,
+      t.rating as task_rating,
+      p.id as project_id,
+      p.title as project_title,
+      tl.id as verification_log_id,
+      tl.action as verification_action,
+      tl.description as admin_feedback,
+      tl.created_at as verified_at,
+      v.id as admin_id,
+      v.first_name || ' ' || v.last_name as admin_name,
+      v.profile_image as admin_image,
+      v.role as admin_role,
+      CASE 
+        WHEN tl.action = 'verify_completed' THEN 'verified'
+        WHEN tl.action = 'verify_rejected' THEN 'rejected'
+        ELSE NULL
+      END as verification_status
+    FROM daily_updates du
+    JOIN tasks t ON du.task_id = t.id
+    LEFT JOIN projects p ON t.project_id = p.id
+    LEFT JOIN task_logs tl ON (
+      tl.task_id = t.id 
+      AND tl.action IN ('verify_completed', 'verify_rejected')
+      AND tl.created_at >= du.created_at
+    )
+    LEFT JOIN users v ON tl.user_id = v.id
+    WHERE du.user_id = $1
+  `;
+
+  const queryParams = [userId];
+  let paramIndex = 2;
+
+  // Add filters
+  if (filters.task_id) {
+    query += ` AND t.id = $${paramIndex}`;
+    queryParams.push(filters.task_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.date_start) {
+    query += ` AND du.update_date >= $${paramIndex}`;
+    queryParams.push(filters.date_start);
+    paramIndex++;
+  }
+
+  if (filters.date_end) {
+    query += ` AND du.update_date <= $${paramIndex}`;
+    queryParams.push(filters.date_end);
+    paramIndex++;
+  }
+
+  query += ` ORDER BY du.update_date DESC, du.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+  queryParams.push(limit, offset);
+
+  const { rows } = await db.query(query, queryParams);
+  return rows;
+},
+
+/**
+ * Count total daily updates for user with filters
+ */
+async countMyDailyUpdatesWithFeedback(userId, filters = {}) {
+  let query = `
+    SELECT COUNT(DISTINCT du.id) as total
+    FROM daily_updates du
+    JOIN tasks t ON du.task_id = t.id
+    WHERE du.user_id = $1
+  `;
+
+  const queryParams = [userId];
+  let paramIndex = 2;
+
+  if (filters.task_id) {
+    query += ` AND t.id = $${paramIndex}`;
+    queryParams.push(filters.task_id);
+    paramIndex++;
+  }
+
+  if (filters.project_id) {
+    query += ` AND t.project_id = $${paramIndex}`;
+    queryParams.push(filters.project_id);
+    paramIndex++;
+  }
+
+  if (filters.date_start) {
+    query += ` AND du.update_date >= $${paramIndex}`;
+    queryParams.push(filters.date_start);
+    paramIndex++;
+  }
+
+  if (filters.date_end) {
+    query += ` AND du.update_date <= $${paramIndex}`;
+    queryParams.push(filters.date_end);
+    paramIndex++;
+  }
+
+  const { rows } = await db.query(query, queryParams);
+  return parseInt(rows[0].total);
+}
+,
+/**
  * Get comments for a task with pagination and filters (with replies)
  */
 async getComments(taskId, limit = 50, offset = 0, filters = {}) {

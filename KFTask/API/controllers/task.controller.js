@@ -588,6 +588,50 @@ async getAllVendorsWithDailyUpdates(req, res) {
   }
 },
 /**
+ * Get my daily updates with admin verification feedback
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+async getMyDailyUpdatesWithFeedback(req, res) {
+  try {
+    const userId = req.user.id;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    // Optional filters
+    const filters = {
+      task_id: req.query.task_id ? parseInt(req.query.task_id) : null,
+      project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
+      date_start: req.query.date_start,
+      date_end: req.query.date_end
+    };
+
+    // Remove undefined filters
+    Object.keys(filters).forEach(key => {
+      if (filters[key] === undefined || filters[key] === null) {
+        delete filters[key];
+      }
+    });
+
+    const updates = await TaskModel.getMyDailyUpdatesWithFeedback(userId, limit, offset, filters);
+    const total = await TaskModel.countMyDailyUpdatesWithFeedback(userId, filters);
+
+    return res.status(200).json({
+      updates,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Get my daily updates with feedback error:', error);
+    return res.status(500).json({ message: 'Server error while fetching daily updates' });
+  }
+},
+/**
  * Get tasks pending verification by project ID
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -647,6 +691,7 @@ async getMyProjectsTask(req, res) {
     return res.status(500).json({ message: 'Server error while fetching projects' });
   }
 } ,
+
 /**
  * Verify task completion by vendor
  * @param {Object} req - Express request object
@@ -735,7 +780,7 @@ async verifyTaskCompletion(req, res) {
       // Log verification activity
       await db.query(
         'INSERT INTO task_logs (task_id, user_id, action, description) VALUES ($1, $2, $3, $4)',
-        [taskId, vendorUserId, 'verify_completed', `Task completion verified and approved${rating ? ' with rating: ' + rating : ''}${feedback ? ': ' + feedback : ''}`]
+        [taskId, vendorUserId, 'verify_completed', `${ feedback }`]
       );
     } else {
       // Reset daily update status to in_progress
