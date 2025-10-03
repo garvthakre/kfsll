@@ -769,6 +769,7 @@ async getVerificationsByUser(userId, limit = 10, offset = 0) {
       tl.created_at as verified_at,
       t.rating,
       a.first_name || ' ' || a.last_name as assignee_name,
+      a.id as assignee_id,
       p.title as project_title
     FROM task_logs tl
     JOIN tasks t ON tl.task_id = t.id
