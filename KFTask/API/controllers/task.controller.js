@@ -441,29 +441,30 @@ const filters = {
 },
 
 /**
- * Get all vendors with daily updates and filters
+ * Get all vendors with daily updates for logged-in vendor
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
  * @returns {Object} - List of vendors with daily updates
  */
 async getAllVendorsWithDailyUpdates(req, res) {
   try {
+    const vendorId = req.user.id; // Get vendor ID from logged-in user
     const page = parseInt(req.query.page) || 1;
     const limitParam = req.query.limit;
     
     // Handle limit=0 or limit="all" to get all results
     let limit, offset;
     if (limitParam === '0' || limitParam === 'all' || parseInt(limitParam) === 0) {
-      limit = null; // No limit
-      offset = 0;   // No offset
+      limit = null;
+      offset = 0;
     } else {
       limit = parseInt(limitParam) || 10;
       offset = (page - 1) * limit;
     }
 
-    // Build filters object from query parameters (no creator-related filters)
+    // Build filters object with only vendor-specific filters
     const filters = {
-      vendor_id: req.query.vendor_id ? parseInt(req.query.vendor_id) : null,
+      vendor_id: vendorId, // Always filter by logged-in vendor
       project_id: req.query.project_id ? parseInt(req.query.project_id) : null,
       assignee_id: req.query.assignee_id ? parseInt(req.query.assignee_id) : null,
       update_date_start: req.query.update_date_start,
@@ -477,14 +478,14 @@ async getAllVendorsWithDailyUpdates(req, res) {
       }
     });
 
-    const vendors = await TaskModel.findAllWithDailyUpdates(limit, offset, filters);
+    // Get tasks with their daily updates data
+    const vendors = await TaskModel.findAllWithDailyUpdatesData(limit, offset, filters);
     const total = await TaskModel.countTotalWithDailyUpdates(filters);
 
     // Prepare response based on whether pagination is used
     const response = { vendors };
     
     if (limit !== null) {
-      // Include pagination info only when limit is applied
       response.pagination = {
         total,
         page,
@@ -492,7 +493,6 @@ async getAllVendorsWithDailyUpdates(req, res) {
         pages: Math.ceil(total / limit)
       };
     } else {
-      // When returning all results, just include total count
       response.total = total;
     }
 

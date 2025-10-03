@@ -1066,8 +1066,8 @@ router.get('/daily-updates', authenticateToken, TaskController.getAllTasksWithDa
  * @swagger
  * /api/tasks/vendor-updates:
  *   get:
- *     summary: Get all vendors with daily updates and filters
- *     description: Retrieve all vendors that have daily updates with project info and filtering options. Use limit=0 or limit=all to get all results without pagination.
+ *     summary: Get all vendor updates for logged-in vendor
+ *     description: Retrieve all tasks with daily updates for the logged-in vendor only. Automatically filters by the vendor's ID from authentication. Use limit=0 or limit=all to get all results without pagination.
  *     tags: [Tasks]
  *     security:
  *       - bearerAuth: []
@@ -1084,11 +1084,6 @@ router.get('/daily-updates', authenticateToken, TaskController.getAllTasksWithDa
  *           type: string
  *           default: "10"
  *         description: Number of results per page. Use 0 or "all" to get all results  
- *       - in: query
- *         name: vendor_id
- *         schema:
- *           type: integer
- *         description: Filter by specific vendor ID
  *       - in: query
  *         name: project_id
  *         schema:
@@ -1113,7 +1108,7 @@ router.get('/daily-updates', authenticateToken, TaskController.getAllTasksWithDa
  *         description: Filter daily updates up to this date (YYYY-MM-DD)
  *     responses:
  *       200:
- *         description: List of vendors with daily updates
+ *         description: List of vendor tasks with daily updates
  *         content:
  *           application/json:
  *             schema:
@@ -1127,16 +1122,16 @@ router.get('/daily-updates', authenticateToken, TaskController.getAllTasksWithDa
  *                         properties:
  *                           id:
  *                             type: integer
- *                             description: Vendor ID
- *                             example: 0
- *                           name:
+ *                             description: Task ID
+ *                             example: 1
+ *                           title:
  *                             type: string
- *                             description: Vendor name
- *                             example: "ABC Supplies Ltd"
+ *                             description: Task title
+ *                             example: "Complete project documentation"
  *                           project_id:
  *                             type: integer
  *                             description: Project ID
- *                             example: 0
+ *                             example: 5
  *                           project_name:
  *                             type: string
  *                             description: Project name
@@ -1144,27 +1139,50 @@ router.get('/daily-updates', authenticateToken, TaskController.getAllTasksWithDa
  *                           assignee_id:
  *                             type: integer
  *                             description: Assignee user ID
- *                             example: 0
+ *                             example: 10
+ *                           assignee_name:
+ *                             type: string
+ *                             description: Assignee full name
+ *                             example: "John Doe"
  *                           status:
  *                             type: string
- *                             description: Vendor status
- *                             example: "active"
+ *                             description: Task status
+ *                             example: "in_progress"
  *                           due_date:
  *                             type: string
  *                             format: date
- *                             description: Vendor due date
+ *                             description: Task due date
  *                             example: "2024-02-15"
  *                           created_at:
  *                             type: string
  *                             format: date-time
- *                             description: Vendor creation date
+ *                             description: Task creation date
  *                           updated_at:
  *                             type: string
  *                             format: date-time
  *                             description: Last update date
+ *                           daily_updates:
+ *                             type: array
+ *                             description: Array of daily updates for this task
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 id:
+ *                                   type: integer
+ *                                 content:
+ *                                   type: string
+ *                                 update_date:
+ *                                   type: string
+ *                                   format: date
+ *                                 status:
+ *                                   type: string
+ *                                 user_name:
+ *                                   type: string
+ *                                 profile_image:
+ *                                   type: string
  *                           daily_updates_count:
  *                             type: integer
- *                             description: Number of daily updates for this vendor
+ *                             description: Number of daily updates for this task
  *                             example: 5
  *                     pagination:
  *                       type: object
@@ -1186,7 +1204,7 @@ router.get('/daily-updates', authenticateToken, TaskController.getAllTasksWithDa
  *                     vendors:
  *                       type: array
  *                       items:
- *                         $ref: '#/components/schemas/Task'
+ *                         type: object
  *                     total:
  *                       type: integer
  *                       example: 50
